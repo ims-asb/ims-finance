@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IMS Financial Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f4f0;--surface:#ffffff;--border:#e2e0d8;--border-strong:#c8c5bb;
+  --text:#1a1917;--muted:#6b6963;--hint:#a09e97;
+  --green:#1a6b4a;--red:#b83030;--accent:#2a5caa;--yellow:#92750a;--orange:#b85c00;
+  --radius:10px;--radius-sm:6px;
+}
+body.dark{
+  --bg:#111110;--surface:#1c1c1a;--border:#2e2d2a;--border-strong:#3d3c38;
+  --text:#f0ede8;--muted:#8a8880;--hint:#5a5855;
+  --green:#2ecc87;--red:#e05555;--accent:#6b9ff0;--yellow:#e0b84a;--orange:#f0823a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .2s}
+.container{max-width:900px;margin:0 auto;padding:0 16px 40px}
+header{display:flex;align-items:center;justify-content:space-between;padding:16px 0;margin-bottom:8px;border-bottom:1px solid var(--border)}
+.hdr-left h1{font-size:18px;font-weight:600;letter-spacing:-.02em}
+.hdr-left p{font-size:12px;font-family:'DM Mono',monospace;color:var(--muted);margin-top:2px}
+.hdr-right{display:flex;align-items:center;gap:8px}
+.icon-btn{background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--muted)}
+.icon-btn:hover{background:var(--surface)}
+.tabs{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:3px;margin-bottom:20px;overflow-x:auto}
+.tab{padding:7px 14px;font-size:13px;font-family:'DM Sans',sans-serif;background:none;border:none;border-radius:4px;cursor:pointer;color:var(--muted);white-space:nowrap;transition:all .15s}
+.tab.on{background:var(--bg);color:var(--text);font-weight:500}
+.sec{display:none}.sec.on{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.card+.card{margin-top:12px}
+.card-title{font-size:13px;font-weight:500;font-family:'DM Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px}
+.btn{padding:8px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;transition:all .15s}
+.btn:hover{border-color:var(--border-strong)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{opacity:.9}
+.btn.danger{background:var(--red);border-color:var(--red);color:#fff}
+.btn.danger:hover{opacity:.9}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn.full{width:100%}
+.fg{margin-bottom:12px}
+.fl{display:block;font-size:12px;font-family:'DM Mono',monospace;color:var(--muted);margin-bottom:5px}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;background:var(--surface);color:var(--text);outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.metric{background:var(--bg);border-radius:var(--radius-sm);padding:12px;text-align:center}
+.metric-lbl{font-size:11px;font-family:'DM Mono',monospace;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.metric-val{font-size:22px;font-weight:600;letter-spacing:-.02em}
+.metric-val.pos{color:var(--green)}.metric-val.neg{color:var(--red)}.metric-val.neu{color:var(--text)}
+.row-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.row-item:last-child{border-bottom:none}
+.row-main{flex:1;min-width:0}
+.row-title{font-size:14px;font-weight:500}
+.row-sub{font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px}
+.row-val{font-size:14px;font-weight:500;font-family:'DM Mono',monospace;flex-shrink:0}
+.tag{display:inline-block;font-size:11px;font-family:'DM Mono',monospace;padding:2px 7px;border-radius:20px;border:1px solid var(--border)}
+.tag.ok{background:#e8f5ee;border-color:#a8d5bc;color:var(--green)}
+.tag.warn{background:#fff3e0;border-color:#ffcc80;color:var(--orange)}
+.tag.over{background:#fff0f0;border-color:#f5b8b8;color:var(--red)}
+body.dark .tag.ok{background:#0d2e1e;border-color:#1a5e3a}
+body.dark .tag.warn{background:#2a1800;border-color:#6b3c00}
+body.dark .tag.over{background:#2a0d0d;border-color:#7a2020}
+.progress-wrap{background:var(--border);border-radius:20px;height:8px;overflow:hidden;margin:6px 0}
+.progress-bar{height:8px;border-radius:20px;background:var(--green);transition:width .4s}
+.progress-bar.warn{background:var(--orange)}
+.progress-bar.over{background:var(--red)}
+.empty{text-align:center;padding:32px 16px;color:var(--hint);font-size:14px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 20px;border-radius:20px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:500;white-space:nowrap}
+.toast.on{opacity:1}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.on{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius);padding:24px;max-width:480px;width:90%;max-height:90vh;overflow-y:auto}
+.modal h2{font-size:18px;font-weight:600;margin-bottom:6px}
+.modal p{font-size:13px;color:var(--muted);margin-bottom:16px}
+.alert-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:var(--radius-sm);border-left:3px solid var(--red);margin-bottom:8px;font-size:13px}
+.alert-row.warn{border-color:var(--orange)}
+@media(max-width:540px){.grid2,.grid3{grid-template-columns:1fr}.tabs .tab{padding:6px 10px;font-size:12px}}
+</style>
+</head>
+<body>
+<!-- PASSWORD GATE -->
+<div id="gate" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)">
+  <div style="width:100%;max-width:360px;padding:0 20px">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-size:32px;margin-bottom:8px">📊</div>
+      <h1 style="font-size:22px;font-weight:600;margin-bottom:4px">IMS Financial Manager</h1>
+      <p style="font-size:13px;color:var(--muted)">Issaquah Middle School ASB · 2026–2027</p>
+    </div>
+    <div class="card">
+      <div class="fg"><label class="fl">Access code</label>
+        <input type="password" id="gate-input" placeholder="Enter access code" onkeydown="if(event.key==='Enter')checkGate()">
+      </div>
+      <div id="gate-error" style="font-size:12px;color:var(--red);min-height:16px;margin-bottom:10px;font-family:'DM Mono',monospace"></div>
+      <button class="btn primary full" onclick="checkGate()">Enter</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP (hidden until auth) -->
+<div id="app" style="display:none">
+<div class="container">
+  <header>
+    <div class="hdr-left">
+      <h1>📊 IMS Financial Manager</h1>
+      <p id="hdr-user">Loading...</p>
+    </div>
+    <div class="hdr-right">
+      <button class="icon-btn" id="theme-btn" onclick="toggleTheme()">🌙</button>
+      <button class="icon-btn" onclick="logout()">Sign out</button>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab on" id="tab-overview" onclick="go('overview')">📈 Overview</button>
+    <button class="tab" id="tab-budget" onclick="go('budget')">💰 ASB Budget</button>
+    <button class="tab" id="tab-hours" onclick="go('hours')">⏱ Club Hours</button>
+    <button class="tab" id="tab-budgets" onclick="go('budgets')">💰 Club Budgets</button>
+    <button class="tab" id="tab-projects" onclick="go('projects')">🗂 Projects</button>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div id="s-overview" class="sec on">
+    <div id="hours-alerts"></div>
+    <div class="grid3" id="ov-metrics">
+      <div class="metric"><div class="metric-lbl">Total clubs</div><div class="metric-val neu" id="ov-clubs">0</div></div>
+      <div class="metric"><div class="metric-lbl">Teachers over limit</div><div class="metric-val neg" id="ov-over">0</div></div>
+      <div class="metric"><div class="metric-lbl">Active projects</div><div class="metric-val neu" id="ov-projects">0</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Hours this month — by teacher</div>
+      <div id="ov-hours-list"><div class="empty">No hours logged yet.</div></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="card-title">Budget summary — all clubs</div>
+      <div id="ov-budget-list"><div class="empty">No club budgets set up yet.</div></div>
+    </div>
+  </div>
+
+
+  <!-- ASB BUDGET -->
+  <div id="s-budget" class="sec">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h2 style="font-size:16px;font-weight:500">ASB Budget</h2>
+      <div style="display:flex;gap:8px">
+        <select id="month-filter" class="btn" style="font-size:12px;padding:5px 10px" onchange="renderBudgetTab()">
+          <option value="all">All months</option>
+        </select>
+        <button class="btn sm primary" onclick="openModal('add-txn-modal')">+ Add transaction</button>
+      </div>
+    </div>
+    <div class="grid3" id="budget-metrics">
+      <div class="metric"><div class="metric-lbl">Balance</div><div class="metric-val neu" id="b-bal">$0.00</div></div>
+      <div class="metric"><div class="metric-lbl">Income</div><div class="metric-val pos" id="b-inc">$0.00</div></div>
+      <div class="metric"><div class="metric-lbl">Expenses</div><div class="metric-val neg" id="b-exp">$0.00</div></div>
+    </div>
+    <!-- Goal progress -->
+    <div id="b-goal-wrap" class="card" style="display:none;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span id="b-goal-name" style="font-size:13px;font-weight:500">Fundraising goal</span>
+        <span id="b-goal-pct" style="font-size:12px;font-family:'DM Mono',monospace;color:var(--muted)">0%</span>
+      </div>
+      <div class="progress-wrap"><div class="progress-bar" id="b-goal-bar" style="width:0%"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;font-family:'DM Mono',monospace;color:var(--hint);margin-top:4px">
+        <span id="b-goal-raised">$0 raised</span><span id="b-goal-target">goal: $0</span>
+      </div>
+    </div>
+    <!-- Goal setter -->
+    <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
+      <input type="text" id="goal-name-in" placeholder="Goal name (e.g. Spring Dance Fund)" style="flex:1;font-size:13px;padding:6px 10px">
+      <input type="number" id="goal-amt-in" placeholder="Amount ($)" style="width:120px;font-size:13px;padding:6px 10px">
+      <button class="btn sm" onclick="saveGoalFin()">Set goal</button>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span class="card-title" style="margin-bottom:0">Transaction history</span>
+        <button class="btn sm" onclick="exportCSV()">⬇ Export CSV</button>
+      </div>
+      <div id="txn-list"><div class="empty">No transactions yet.</div></div>
+    </div>
+    <!-- Expense chart -->
+    <div class="card" id="expense-chart-card" style="margin-top:12px;display:none">
+      <div class="card-title">Expenses by category</div>
+      <div id="expense-chart"></div>
+    </div>
+  </div>
+
+
+  <!-- ASB BUDGET -->
+  <div id="s-budget" class="sec">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h2 style="font-size:16px;font-weight:500">ASB Budget</h2>
+      <div style="display:flex;gap:8px">
+        <select id="month-filter" class="btn" style="font-size:12px;padding:5px 10px" onchange="renderBudgetTab()">
+          <option value="all">All months</option>
+        </select>
+        <button class="btn sm primary" onclick="openModal('add-txn-modal')">+ Add transaction</button>
+      </div>
+    </div>
+    <div class="grid3" id="budget-metrics">
+      <div class="metric"><div class="metric-lbl">Balance</div><div class="metric-val neu" id="b-bal">$0.00</div></div>
+      <div class="metric"><div class="metric-lbl">Income</div><div class="metric-val pos" id="b-inc">$0.00</div></div>
+      <div class="metric"><div class="metric-lbl">Expenses</div><div class="metric-val neg" id="b-exp">$0.00</div></div>
+    </div>
+    <!-- Goal progress -->
+    <div id="b-goal-wrap" class="card" style="display:none;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span id="b-goal-name" style="font-size:13px;font-weight:500">Fundraising goal</span>
+        <span id="b-goal-pct" style="font-size:12px;font-family:'DM Mono',monospace;color:var(--muted)">0%</span>
+      </div>
+      <div class="progress-wrap"><div class="progress-bar" id="b-goal-bar" style="width:0%"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;font-family:'DM Mono',monospace;color:var(--hint);margin-top:4px">
+        <span id="b-goal-raised">$0 raised</span><span id="b-goal-target">goal: $0</span>
+      </div>
+    </div>
+    <!-- Goal setter -->
+    <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
+      <input type="text" id="goal-name-in" placeholder="Goal name (e.g. Spring Dance Fund)" style="flex:1;font-size:13px;padding:6px 10px">
+      <input type="number" id="goal-amt-in" placeholder="Amount ($)" style="width:120px;font-size:13px;padding:6px 10px">
+      <button class="btn sm" onclick="saveGoalFin()">Set goal</button>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span class="card-title" style="margin-bottom:0">Transaction history</span>
+        <button class="btn sm" onclick="exportCSV()">⬇ Export CSV</button>
+      </div>
+      <div id="txn-list"><div class="empty">No transactions yet.</div></div>
+    </div>
+    <!-- Expense chart -->
+    <div class="card" id="expense-chart-card" style="margin-top:12px;display:none">
+      <div class="card-title">Expenses by category</div>
+      <div id="expense-chart"></div>
+    </div>
+  </div>
+
+
+  <!-- CLUB HOURS -->
+  <div id="s-hours" class="sec">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h2 style="font-size:16px;font-weight:500">Club Hours</h2>
+      <div style="display:flex;gap:8px">
+        <select id="hours-month" class="btn" style="font-size:12px;padding:5px 10px" onchange="renderHours()">
+          <option value="all">All months</option>
+        </select>
+        <button class="btn sm primary" onclick="openModal('add-hours-modal')">+ Log hours</button>
+      </div>
+    </div>
+    <div id="hours-alerts-tab"></div>
+    <div class="card">
+      <div id="hours-list"><div class="empty">No hours logged yet. Use "Log hours" to add entries.</div></div>
+    </div>
+  </div>
+
+  <!-- CLUB BUDGETS -->
+  <div id="s-budgets" class="sec">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h2 style="font-size:16px;font-weight:500">Club Budgets</h2>
+      <div style="display:flex;gap:8px">
+        <button class="btn sm" onclick="openModal('add-club-modal')">+ Add club</button>
+        <button class="btn sm primary" onclick="openModal('add-expense-modal')">+ Log expense</button>
+      </div>
+    </div>
+    <div id="budgets-list"><div class="empty">No clubs added yet.</div></div>
+  </div>
+
+  <!-- PROJECTS -->
+  <div id="s-projects" class="sec">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h2 style="font-size:16px;font-weight:500">Project Funding</h2>
+      <button class="btn sm primary" onclick="openModal('add-project-modal')">+ New project</button>
+    </div>
+    <div id="projects-list"><div class="empty">No projects yet.</div></div>
+  </div>
+</div>
+</div>
+
+<!-- ADD HOURS MODAL -->
+<div id="add-hours-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('add-hours-modal')">
+  <div class="modal">
+    <h2>Log club hours</h2>
+    <p>Record teacher hours for a club session.</p>
+    <div class="grid2">
+      <div class="fg"><label class="fl">Teacher name</label><input id="h-teacher" placeholder="e.g. Mz. Weed"></div>
+      <div class="fg"><label class="fl">Club name</label><input id="h-club" placeholder="e.g. Chess Club"></div>
+    </div>
+    <div class="grid2">
+      <div class="fg"><label class="fl">Date</label><input type="date" id="h-date"></div>
+      <div class="fg"><label class="fl">Hours</label><input type="number" id="h-hours" min="0.5" max="10" step="0.5" placeholder="e.g. 2"></div>
+    </div>
+    <div class="fg"><label class="fl">Notes (optional)</label><input id="h-notes" placeholder="After-school session, tournament prep, etc."></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+      <button class="btn" onclick="closeModal('add-hours-modal')">Cancel</button>
+      <button class="btn primary" onclick="addHours()">✓ Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD CLUB MODAL -->
+<div id="add-club-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('add-club-modal')">
+  <div class="modal">
+    <h2>Add club</h2>
+    <p>Set up a club with a budget allocation.</p>
+    <div class="fg"><label class="fl">Club name</label><input id="c-name" placeholder="e.g. Drama Club"></div>
+    <div class="fg"><label class="fl">Advisor / teacher</label><input id="c-advisor" placeholder="e.g. Ms. Gale"></div>
+    <div class="fg"><label class="fl">Annual budget ($)</label><input type="number" id="c-budget" min="0" step="1" placeholder="e.g. 500"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+      <button class="btn" onclick="closeModal('add-club-modal')">Cancel</button>
+      <button class="btn primary" onclick="addClub()">✓ Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD EXPENSE MODAL -->
+<div id="add-expense-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('add-expense-modal')">
+  <div class="modal">
+    <h2>Log club expense</h2>
+    <p>Record income or an expense against a club's budget.</p>
+    <div class="grid2">
+      <div class="fg"><label class="fl">Club</label>
+        <select id="e-club"><option value="">Select club...</option></select>
+      </div>
+      <div class="fg"><label class="fl">Type</label>
+        <select id="e-type"><option value="expense">Expense</option><option value="income">Income</option></select>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="fg"><label class="fl">Amount ($)</label><input type="number" id="e-amount" min="0" step="0.01" placeholder="0.00"></div>
+      <div class="fg"><label class="fl">Date</label><input type="date" id="e-date"></div>
+    </div>
+    <div class="fg"><label class="fl">Description</label><input id="e-desc" placeholder="e.g. Costume supplies"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+      <button class="btn" onclick="closeModal('add-expense-modal')">Cancel</button>
+      <button class="btn primary" onclick="addExpense()">✓ Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PROJECT MODAL -->
+<div id="add-project-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('add-project-modal')">
+  <div class="modal">
+    <h2>New project</h2>
+    <p>Set up a project with dedicated funding.</p>
+    <div class="fg"><label class="fl">Project name</label><input id="p-name" placeholder="e.g. New gym equipment"></div>
+    <div class="grid2">
+      <div class="fg"><label class="fl">Allocated budget ($)</label><input type="number" id="p-budget" min="0" step="1" placeholder="e.g. 2000"></div>
+      <div class="fg"><label class="fl">Target date</label><input type="date" id="p-date"></div>
+    </div>
+    <div class="fg"><label class="fl">Description</label><textarea id="p-desc" rows="2" placeholder="What is this project for?"></textarea></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+      <button class="btn" onclick="closeModal('add-project-modal')">Cancel</button>
+      <button class="btn primary" onclick="addProject()">✓ Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PROJECT ENTRY MODAL -->
+<div id="add-pentry-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('add-pentry-modal')">
+  <div class="modal">
+    <h2>Log project transaction</h2>
+    <input type="hidden" id="pe-project-id">
+    <div class="grid2">
+      <div class="fg"><label class="fl">Type</label>
+        <select id="pe-type"><option value="expense">Expense</option><option value="income">Income / deposit</option></select>
+      </div>
+      <div class="fg"><label class="fl">Amount ($)</label><input type="number" id="pe-amount" min="0" step="0.01" placeholder="0.00"></div>
+    </div>
+    <div class="grid2">
+      <div class="fg"><label class="fl">Date</label><input type="date" id="pe-date"></div>
+      <div class="fg"><label class="fl">Description</label><input id="pe-desc" placeholder="e.g. Down payment"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+      <button class="btn" onclick="closeModal('add-pentry-modal')">Cancel</button>
+      <button class="btn primary" onclick="addProjectEntry()">✓ Save</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ADD TRANSACTION MODAL -->
+<div id="add-txn-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('add-txn-modal')">
+  <div class="modal">
+    <h2>Add transaction</h2>
+    <div class="grid2">
+      <div class="fg"><label class="fl">Type</label>
+        <select id="t-type"><option value="income">Income</option><option value="expense">Expense</option></select>
+      </div>
+      <div class="fg"><label class="fl">Amount ($)</label><input type="number" id="t-amount" min="0" step="0.01" placeholder="0.00"></div>
+    </div>
+    <div class="grid2">
+      <div class="fg"><label class="fl">Date</label><input type="date" id="t-date"></div>
+      <div class="fg"><label class="fl">Category</label>
+        <select id="t-cat">
+          <option>PTSA Funds</option><option>Fundraiser</option><option>Events & Dances</option>
+          <option>Supplies</option><option>Club Activities</option><option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Description</label><input id="t-desc" placeholder="e.g. Bake sale proceeds"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+      <button class="btn" onclick="closeModal('add-txn-modal')">Cancel</button>
+      <button class="btn primary" onclick="addTxn()">✓ Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+
+// ── ASB BUDGET ────────────────────────────────────────────────────────
+let finGoal=0; let finGoalName='Fundraising goal';
+
+function addTxn(){
+  const type=document.getElementById('t-type').value;
+  const amount=parseFloat(document.getElementById('t-amount').value)||0;
+  const date=document.getElementById('t-date').value;
+  const cat=document.getElementById('t-cat').value;
+  const desc=document.getElementById('t-desc').value.trim();
+  if(!amount||!date||!desc){toast('Fill in all fields');return;}
+  data.txns.push({id:Date.now(),type,amount,date,category:cat,description:desc});
+  save();closeModal('add-txn-modal');
+  ['t-amount','t-date','t-desc'].forEach(id=>document.getElementById(id).value='');
+  toast('Transaction saved');
+}
+
+function delTxn(id){
+  if(!confirm('Delete this transaction?'))return;
+  data.txns=data.txns.filter(t=>t.id!==id);save();renderAll();toast('Deleted');
+}
+
+function saveGoalFin(){
+  const name=document.getElementById('goal-name-in').value.trim()||'Fundraising goal';
+  const amt=parseFloat(document.getElementById('goal-amt-in').value)||0;
+  finGoal=amt;finGoalName=name;
+  localStorage.setItem('ims-fin-goal',amt);
+  localStorage.setItem('ims-fin-goal-name',name);
+  if(db)db.ref('ims-financial/goal').set({amount:amt,name});
+  renderBudgetTab();toast('Goal saved');
+}
+
+function renderBudgetTab(){
+  const mf=document.getElementById('month-filter').value;
+  const txns=mf==='all'?data.txns:data.txns.filter(t=>t.date.startsWith(mf));
+  const inc=txns.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const exp=txns.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const bal=inc-exp;
+  const bb=document.getElementById('b-bal');
+  if(bb){bb.textContent=fmt(bal);bb.className='metric-val '+(bal>=0?'pos':'neg');}
+  const bi=document.getElementById('b-inc');if(bi)bi.textContent=fmt(inc);
+  const be=document.getElementById('b-exp');if(be)be.textContent=fmt(exp);
+  // goal
+  finGoal=parseFloat(localStorage.getItem('ims-fin-goal')||'0');
+  finGoalName=localStorage.getItem('ims-fin-goal-name')||'Fundraising goal';
+  const gw=document.getElementById('b-goal-wrap');
+  if(gw)gw.style.display=finGoal>0?'block':'none';
+  if(finGoal>0){
+    const pct=Math.min(100,Math.round((inc/finGoal)*100));
+    document.getElementById('b-goal-name').textContent=finGoalName;
+    document.getElementById('b-goal-pct').textContent=pct+'%';
+    document.getElementById('b-goal-bar').style.width=pct+'%';
+    document.getElementById('b-goal-raised').textContent=fmt(inc)+' raised';
+    document.getElementById('b-goal-target').textContent='goal: '+fmt(finGoal);
+  }
+  // transactions
+  const list=document.getElementById('txn-list');
+  const sorted=[...txns].sort((a,b)=>b.date.localeCompare(a.date));
+  if(!sorted.length){list.innerHTML='<div class="empty">No transactions yet.</div>';return;}
+  list.innerHTML=sorted.map(t=>`<div class="row-item">
+    <div style="width:8px;height:8px;border-radius:50%;background:${t.type==='income'?'var(--green)':'var(--red)'};flex-shrink:0"></div>
+    <div class="row-main">
+      <div class="row-title">${t.description}</div>
+      <div class="row-sub">${t.date} · ${t.category}</div>
+    </div>
+    <div style="font-size:14px;font-family:'DM Mono',monospace;color:${t.type==='income'?'var(--green)':'var(--red)'};margin-right:8px">${t.type==='income'?'+':'−'}${fmt(t.amount)}</div>
+    <button style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:14px" onclick="delTxn(${t.id})">✕</button>
+  </div>`).join('');
+  // expense chart
+  const byCat={};txns.filter(t=>t.type==='expense').forEach(t=>{byCat[t.category]=(byCat[t.category]||0)+t.amount;});
+  const chartCard=document.getElementById('expense-chart-card');
+  const chartEl=document.getElementById('expense-chart');
+  if(!Object.keys(byCat).length){if(chartCard)chartCard.style.display='none';return;}
+  if(chartCard)chartCard.style.display='block';
+  const maxAmt=Math.max(...Object.values(byCat));
+  const colors=['var(--accent)','var(--green)','#e0b84a','#e05555','#9b59b6','#e67e22'];
+  chartEl.innerHTML=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([cat,amt],i)=>`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="font-size:12px;color:var(--muted);width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cat}</div>
+      <div style="flex:1;background:var(--border);border-radius:4px;height:18px;overflow:hidden">
+        <div style="width:${(amt/maxAmt*100).toFixed(0)}%;height:18px;background:${colors[i%colors.length]};border-radius:4px;transition:width .4s"></div>
+      </div>
+      <div style="font-size:12px;font-family:'DM Mono',monospace;color:var(--muted);width:70px;text-align:right">${fmt(amt)}</div>
+    </div>`).join('');
+  // populate month filter
+  const sel=document.getElementById('month-filter');
+  const months=new Set(data.txns.map(t=>t.date.slice(0,7)));
+  const cur=sel.value;
+  sel.innerHTML='<option value="all">All months</option>';
+  [...months].sort().reverse().forEach(m=>{
+    const [y,mo]=m.split('-');
+    const label=new Date(y,parseInt(mo)-1).toLocaleDateString('default',{month:'long',year:'numeric'});
+    sel.innerHTML+=`<option value="${m}"${m===cur?' selected':''}>${label}</option>`;
+  });
+}
+
+function exportCSV(){
+  if(!data.txns.length){toast('No transactions to export');return;}
+  const rows=[['Date','Type','Category','Description','Amount']];
+  [...data.txns].sort((a,b)=>a.date.localeCompare(b.date)).forEach(t=>{
+    rows.push([t.date,t.type,t.category,t.description,(t.type==='expense'?'-':'')+t.amount.toFixed(2)]);
+  });
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join(String.fromCharCode(10));
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='ims-asb-budget-'+new Date().getFullYear()+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  toast('CSV downloaded');
+}
+
+// ── AUTH ──────────────────────────────────────────────────────────────
+const CODES={
+  'lukelitreasurer2026':'Luke Li (Treasurer)',
+  'mzweedandmsgalearecool':'Advisor'
+};
+let currentUser='';
+
+function checkGate(){
+  const pw=document.getElementById('gate-input').value.trim();
+  const user=CODES[pw];
+  if(!user){
+    document.getElementById('gate-error').textContent='Wrong access code.';
+    document.getElementById('gate-input').value='';
+    return;
+  }
+  currentUser=user;
+  document.getElementById('gate').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('hdr-user').textContent=user+' · 2026–2027';
+  initFirebase();
+  loadTheme();
+  renderAll();
+}
+
+function logout(){
+  if(!confirm('Sign out?'))return;
+  document.getElementById('gate').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('gate-input').value='';
+  document.getElementById('gate-error').textContent='';
+  currentUser='';
+}
+
+// ── FIREBASE ──────────────────────────────────────────────────────────
+const FB_CONFIG={"apiKey":"AIzaSyDYBkwL0zaypB0Q9y-17Gd5SG9co36wuz4","authDomain":"ims-asb-hub.firebaseapp.com","projectId":"ims-asb-hub","storageBucket":"ims-asb-hub.firebasestorage.app","messagingSenderId":"340484704921","appId":"1:340484704921:web:09b6122b53dca0c6f90608","databaseURL":"https://ims-asb-hub-default-rtdb.firebaseio.com"};
+let db=null;
+
+function initFirebase(){
+  try{
+    const app=firebase.apps.length?firebase.app():firebase.initializeApp(FB_CONFIG);
+    db=firebase.database(app);
+    db.ref('ims-financial/goal').once('value').then(snap=>{
+    const g=snap.val();
+    if(g){finGoal=g.amount||0;finGoalName=g.name||'Fundraising goal';
+      localStorage.setItem('ims-fin-goal',finGoal);
+      localStorage.setItem('ims-fin-goal-name',finGoalName);}
+  });
+  db.ref('ims-financial').on('value',snap=>{
+      const d=snap.val()||{};
+      data.txns=d.txns?Object.values(d.txns):[],
+      data.hours=d.hours?Object.values(d.hours):[],
+      data.clubs=d.clubs?Object.values(d.clubs):[],
+      data.expenses=d.expenses?Object.values(d.expenses):[],
+      data.projects=d.projects?Object.values(d.projects):[],
+      data.projectEntries=d.projectEntries?Object.values(d.projectEntries):[];
+      renderAll();
+    });
+  }catch(e){toast('Firebase error: '+e.message);}
+}
+
+function save(){
+  if(!db)return;
+  const toObj=arr=>arr.reduce((o,i)=>{o[i.id]=i;return o;},{});
+  db.ref('ims-financial').set({
+    txns:toObj(data.txns),
+    hours:toObj(data.hours),
+    clubs:toObj(data.clubs),
+    expenses:toObj(data.expenses),
+    projects:toObj(data.projects),
+    projectEntries:toObj(data.projectEntries)
+  }).catch(e=>toast('Save error: '+e.message));
+}
+
+// ── DATA ──────────────────────────────────────────────────────────────
+let data={txns:[],hours:[],clubs:[],expenses:[],projects:[],projectEntries:[]};
+const HOURS_LIMIT=30;
+const today=(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})();
+
+// ── HELPERS ───────────────────────────────────────────────────────────
+function fmt(n){return '$'+parseFloat(n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2500);}
+function openModal(id){document.getElementById(id).classList.add('on');}
+function closeModal(id){document.getElementById(id).classList.remove('on');}
+function go(t){
+  ['overview','budget','hours','budgets','projects'].forEach(n=>{
+    document.getElementById('tab-'+n).classList.toggle('on',n===t);
+    document.getElementById('s-'+n).classList.toggle('on',n===t);
+  });
+}
+
+// ── HOURS ─────────────────────────────────────────────────────────────
+function addHours(){
+  const teacher=document.getElementById('h-teacher').value.trim();
+  const club=document.getElementById('h-club').value.trim();
+  const date=document.getElementById('h-date').value;
+  const hours=parseFloat(document.getElementById('h-hours').value);
+  const notes=document.getElementById('h-notes').value.trim();
+  if(!teacher||!club||!date||!hours){toast('Fill in all required fields');return;}
+  data.hours.push({id:Date.now(),teacher,club,date,hours,notes});
+  save();closeModal('add-hours-modal');
+  ['h-teacher','h-club','h-date','h-hours','h-notes'].forEach(id=>document.getElementById(id).value='');
+  toast('Hours logged');
+}
+
+function getHoursInMonth(teacher,yearMonth){
+  return data.hours.filter(h=>h.teacher===teacher&&h.date.startsWith(yearMonth)).reduce((s,h)=>s+h.hours,0);
+}
+
+function getCurrentMonthKey(){
+  const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+
+function renderHours(){
+  const monthFilter=document.getElementById('hours-month').value;
+  const filtered=monthFilter==='all'?[...data.hours]:data.hours.filter(h=>h.date.startsWith(monthFilter));
+  const list=document.getElementById('hours-list');
+  if(!filtered.length){list.innerHTML='<div class="empty">No hours logged for this period.</div>';return;}
+  filtered.sort((a,b)=>b.date.localeCompare(a.date));
+  list.innerHTML=filtered.map(h=>`<div class="row-item">
+    <div class="row-main">
+      <div class="row-title">${h.teacher} — ${h.club}</div>
+      <div class="row-sub">${h.date}${h.notes?' · '+h.notes:''}</div>
+    </div>
+    <div class="row-val" style="margin-right:8px">${h.hours}h</div>
+    <button class="btn sm" style="color:var(--hint);border:none;background:none;font-size:16px" onclick="delHours(${h.id})">✕</button>
+  </div>`).join('');
+  renderHoursAlerts();
+}
+
+function renderHoursAlerts(){
+  const month=getCurrentMonthKey();
+  const byTeacher={};
+  data.hours.filter(h=>h.date.startsWith(month)).forEach(h=>{
+    byTeacher[h.teacher]=(byTeacher[h.teacher]||0)+h.hours;
+  });
+  const alerts=Object.entries(byTeacher).filter(([,h])=>h>=25);
+  const alertHtml=alerts.map(([t,h])=>`<div class="alert-row ${h>=HOURS_LIMIT?'':'warn'}">
+    ${h>=HOURS_LIMIT?'🔴':'🟡'} <strong>${t}</strong> has ${h}h this month
+    ${h>=HOURS_LIMIT?'<span style="color:var(--red)"> — EXCEEDS 30hr limit</span>':'<span style="color:var(--orange)"> — approaching 30hr limit</span>'}
+  </div>`).join('');
+  ['hours-alerts','hours-alerts-tab'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.innerHTML=alertHtml?`<div style="margin-bottom:14px">${alertHtml}</div>`:'';
+  });
+}
+
+function delHours(id){
+  if(!confirm('Delete this entry?'))return;
+  data.hours=data.hours.filter(h=>h.id!==id);save();renderAll();toast('Deleted');
+}
+
+function populateMonthFilter(){
+  const sel=document.getElementById('hours-month');
+  const months=new Set(data.hours.map(h=>h.date.slice(0,7)));
+  const cur=sel.value;
+  sel.innerHTML='<option value="all">All months</option>';
+  [...months].sort().reverse().forEach(m=>{
+    const [y,mo]=m.split('-');
+    const label=new Date(y,parseInt(mo)-1).toLocaleDateString('default',{month:'long',year:'numeric'});
+    sel.innerHTML+=`<option value="${m}"${m===cur?' selected':''}>${label}</option>`;
+  });
+}
+
+// ── CLUB BUDGETS ──────────────────────────────────────────────────────
+function addClub(){
+  const name=document.getElementById('c-name').value.trim();
+  const advisor=document.getElementById('c-advisor').value.trim();
+  const budget=parseFloat(document.getElementById('c-budget').value)||0;
+  if(!name){toast('Enter a club name');return;}
+  if(data.clubs.find(c=>c.name===name)){toast('Club already exists');return;}
+  data.clubs.push({id:Date.now(),name,advisor,budget});
+  save();closeModal('add-club-modal');
+  ['c-name','c-advisor','c-budget'].forEach(id=>document.getElementById(id).value='');
+  toast('Club added');
+}
+
+function addExpense(){
+  const clubName=document.getElementById('e-club').value;
+  const type=document.getElementById('e-type').value;
+  const amount=parseFloat(document.getElementById('e-amount').value)||0;
+  const date=document.getElementById('e-date').value;
+  const desc=document.getElementById('e-desc').value.trim();
+  if(!clubName||!amount||!date||!desc){toast('Fill in all fields');return;}
+  data.expenses.push({id:Date.now(),club:clubName,type,amount,date,desc});
+  save();closeModal('add-expense-modal');
+  ['e-amount','e-date','e-desc'].forEach(id=>document.getElementById(id).value='');
+  toast('Expense logged');
+}
+
+function getClubSpent(clubName){
+  return data.expenses.filter(e=>e.club===clubName&&e.type==='expense').reduce((s,e)=>s+e.amount,0);
+}
+function getClubIncome(clubName){
+  return data.expenses.filter(e=>e.club===clubName&&e.type==='income').reduce((s,e)=>s+e.amount,0);
+}
+
+function renderBudgets(){
+  const list=document.getElementById('budgets-list');
+  const sel=document.getElementById('e-club');
+  // update expense club dropdown
+  sel.innerHTML='<option value="">Select club...</option>';
+  data.clubs.forEach(cl=>sel.innerHTML+=`<option value="${cl.name}">${cl.name}</option>`);
+  if(!data.clubs.length){list.innerHTML='<div class="empty">No clubs yet. Add one to start tracking.</div>';return;}
+  list.innerHTML=data.clubs.map(cl=>{
+    const spent=getClubSpent(cl.name);
+    const income=getClubIncome(cl.name);
+    const net=cl.budget+income-spent;
+    const pct=cl.budget?(Math.min(100,(spent/cl.budget)*100)).toFixed(0):0;
+    const status=spent>cl.budget?'over':spent>cl.budget*.8?'warn':'ok';
+    const statusLabel=spent>cl.budget?'Over budget':spent>cl.budget*.8?'Near limit':'On track';
+    const entries=data.expenses.filter(e=>e.club===cl.name).sort((a,b)=>b.date.localeCompare(a.date));
+    return `<div class="card" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div>
+          <div style="font-size:15px;font-weight:500">${cl.name}</div>
+          ${cl.advisor?`<div style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace">${cl.advisor}</div>`:''}
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="tag ${status}">${statusLabel}</span>
+          <button class="btn sm" onclick="logExpenseFor('${cl.name}')">+ Entry</button>
+          <button style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:14px" onclick="delClub(${cl.id})">✕</button>
+        </div>
+      </div>
+      <div class="grid3" style="margin-bottom:10px">
+        <div class="metric"><div class="metric-lbl">Allocated</div><div class="metric-val neu" style="font-size:16px">${fmt(cl.budget)}</div></div>
+        <div class="metric"><div class="metric-lbl">Spent</div><div class="metric-val neg" style="font-size:16px">${fmt(spent)}</div></div>
+        <div class="metric"><div class="metric-lbl">Remaining</div><div class="metric-val ${net>=0?'pos':'neg'}" style="font-size:16px">${fmt(net)}</div></div>
+      </div>
+      <div class="progress-wrap"><div class="progress-bar ${status}" style="width:${pct}%"></div></div>
+      ${entries.length?`<div style="margin-top:12px;font-size:12px;color:var(--hint);font-family:'DM Mono',monospace;margin-bottom:6px">RECENT ENTRIES</div>`:''}
+      ${entries.slice(0,3).map(e=>`<div class="row-item" style="padding:7px 0">
+        <div class="row-main"><div style="font-size:13px">${e.desc}</div><div style="font-size:11px;color:var(--hint);font-family:'DM Mono',monospace">${e.date}</div></div>
+        <div style="font-size:13px;font-family:'DM Mono',monospace;color:${e.type==='expense'?'var(--red)':'var(--green)'};margin-right:8px">${e.type==='expense'?'-':'+'}${fmt(e.amount)}</div>
+        <button style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:13px" onclick="delExpense(${e.id})">✕</button>
+      </div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+function logExpenseFor(clubName){
+  document.getElementById('e-club').value=clubName;
+  openModal('add-expense-modal');
+}
+function delClub(id){
+  if(!confirm('Delete this club and all its expense entries?'))return;
+  const club=data.clubs.find(c=>c.id===id);
+  data.clubs=data.clubs.filter(c=>c.id!==id);
+  if(club)data.expenses=data.expenses.filter(e=>e.club!==club.name);
+  save();renderAll();toast('Club deleted');
+}
+function delExpense(id){
+  if(!confirm('Delete this entry?'))return;
+  data.expenses=data.expenses.filter(e=>e.id!==id);save();renderAll();toast('Deleted');
+}
+
+// ── PROJECTS ──────────────────────────────────────────────────────────
+function addProject(){
+  const name=document.getElementById('p-name').value.trim();
+  const budget=parseFloat(document.getElementById('p-budget').value)||0;
+  const date=document.getElementById('p-date').value;
+  const desc=document.getElementById('p-desc').value.trim();
+  if(!name){toast('Enter a project name');return;}
+  data.projects.push({id:Date.now(),name,budget,date,desc,status:'active'});
+  save();closeModal('add-project-modal');
+  ['p-name','p-budget','p-date','p-desc'].forEach(id=>document.getElementById(id).value='');
+  toast('Project created');
+}
+
+function addProjectEntry(){
+  const projectId=parseInt(document.getElementById('pe-project-id').value);
+  const type=document.getElementById('pe-type').value;
+  const amount=parseFloat(document.getElementById('pe-amount').value)||0;
+  const date=document.getElementById('pe-date').value;
+  const desc=document.getElementById('pe-desc').value.trim();
+  if(!amount||!date||!desc){toast('Fill in all fields');return;}
+  data.projectEntries.push({id:Date.now(),projectId,type,amount,date,desc});
+  save();closeModal('add-pentry-modal');
+  ['pe-amount','pe-date','pe-desc'].forEach(id=>document.getElementById(id).value='');
+  toast('Entry logged');
+}
+
+function getProjectSpent(pid){return data.projectEntries.filter(e=>e.projectId===pid&&e.type==='expense').reduce((s,e)=>s+e.amount,0);}
+function getProjectIncome(pid){return data.projectEntries.filter(e=>e.projectId===pid&&e.type==='income').reduce((s,e)=>s+e.amount,0);}
+
+function renderProjects(){
+  const list=document.getElementById('projects-list');
+  if(!data.projects.length){list.innerHTML='<div class="empty">No projects yet. Create one to track funding.</div>';return;}
+  list.innerHTML=data.projects.map(p=>{
+    const spent=getProjectSpent(p.id);
+    const income=getProjectIncome(p.id);
+    const remaining=p.budget+income-spent;
+    const pct=p.budget?Math.min(100,(spent/p.budget)*100).toFixed(0):0;
+    const status=spent>p.budget?'over':spent>p.budget*.8?'warn':'ok';
+    const entries=data.projectEntries.filter(e=>e.projectId===p.id).sort((a,b)=>b.date.localeCompare(a.date));
+    return `<div class="card" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div>
+          <div style="font-size:15px;font-weight:500">${p.name}</div>
+          ${p.desc?`<div style="font-size:12px;color:var(--muted);margin-top:2px">${p.desc}</div>`:''}
+          ${p.date?`<div style="font-size:11px;color:var(--hint);font-family:'DM Mono',monospace;margin-top:2px">Target: ${p.date}</div>`:''}
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn sm" onclick="openProjectEntry(${p.id})">+ Entry</button>
+          <select class="btn sm" onchange="updateProjectStatus(${p.id},this.value)" style="font-size:12px">
+            <option value="active"${p.status==='active'?' selected':''}>Active</option>
+            <option value="completed"${p.status==='completed'?' selected':''}>Completed</option>
+            <option value="on-hold"${p.status==='on-hold'?' selected':''}>On hold</option>
+          </select>
+          <button style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:14px" onclick="delProject(${p.id})">✕</button>
+        </div>
+      </div>
+      <div class="grid3" style="margin-bottom:10px">
+        <div class="metric"><div class="metric-lbl">Allocated</div><div class="metric-val neu" style="font-size:16px">${fmt(p.budget)}</div></div>
+        <div class="metric"><div class="metric-lbl">Spent</div><div class="metric-val neg" style="font-size:16px">${fmt(spent)}</div></div>
+        <div class="metric"><div class="metric-lbl">Remaining</div><div class="metric-val ${remaining>=0?'pos':'neg'}" style="font-size:16px">${fmt(remaining)}</div></div>
+      </div>
+      <div class="progress-wrap"><div class="progress-bar ${status}" style="width:${pct}%"></div></div>
+      ${entries.length?`<div style="margin-top:12px;font-size:12px;color:var(--hint);font-family:'DM Mono',monospace;margin-bottom:6px">LEDGER</div>`:''}
+      ${entries.map(e=>`<div class="row-item" style="padding:7px 0">
+        <div class="row-main"><div style="font-size:13px">${e.desc}</div><div style="font-size:11px;color:var(--hint);font-family:'DM Mono',monospace">${e.date}</div></div>
+        <div style="font-size:13px;font-family:'DM Mono',monospace;color:${e.type==='expense'?'var(--red)':'var(--green)'};margin-right:8px">${e.type==='expense'?'-':'+'}${fmt(e.amount)}</div>
+        <button style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:13px" onclick="delProjectEntry(${e.id})">✕</button>
+      </div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+function openProjectEntry(pid){
+  document.getElementById('pe-project-id').value=pid;
+  document.getElementById('pe-date').value=today;
+  openModal('add-pentry-modal');
+}
+function updateProjectStatus(id,status){
+  const p=data.projects.find(p=>p.id===id);if(p){p.status=status;save();}
+}
+function delProject(id){
+  if(!confirm('Delete this project and all its entries?'))return;
+  data.projects=data.projects.filter(p=>p.id!==id);
+  data.projectEntries=data.projectEntries.filter(e=>e.projectId!==id);
+  save();renderAll();toast('Project deleted');
+}
+function delProjectEntry(id){
+  if(!confirm('Delete this entry?'))return;
+  data.projectEntries=data.projectEntries.filter(e=>e.id!==id);save();renderAll();toast('Deleted');
+}
+
+// ── OVERVIEW ──────────────────────────────────────────────────────────
+function renderOverview(){
+  const month=getCurrentMonthKey();
+  // metrics
+  document.getElementById('ov-clubs').textContent=data.clubs.length;
+  const byTeacher={};
+  data.hours.filter(h=>h.date.startsWith(month)).forEach(h=>{byTeacher[h.teacher]=(byTeacher[h.teacher]||0)+h.hours;});
+  document.getElementById('ov-over').textContent=Object.values(byTeacher).filter(h=>h>=HOURS_LIMIT).length;
+  document.getElementById('ov-projects').textContent=data.projects.filter(p=>p.status==='active').length;
+  // hours summary
+  const hlist=document.getElementById('ov-hours-list');
+  if(!Object.keys(byTeacher).length){hlist.innerHTML='<div class="empty">No hours this month.</div>';}
+  else{
+    hlist.innerHTML=Object.entries(byTeacher).sort((a,b)=>b[1]-a[1]).map(([t,h])=>{
+      const pct=Math.min(100,(h/HOURS_LIMIT)*100);
+      const status=h>=HOURS_LIMIT?'over':h>=25?'warn':'ok';
+      return `<div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:13px;font-weight:500">${t}</span>
+          <span style="font-size:12px;font-family:'DM Mono',monospace;color:${h>=HOURS_LIMIT?'var(--red)':h>=25?'var(--orange)':'var(--muted)'}">${h}/${HOURS_LIMIT}h</span>
+        </div>
+        <div class="progress-wrap"><div class="progress-bar ${status}" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('');
+  }
+  // budget summary
+  const blist=document.getElementById('ov-budget-list');
+  if(!data.clubs.length){blist.innerHTML='<div class="empty">No clubs set up yet.</div>';}
+  else{
+    blist.innerHTML=data.clubs.map(cl=>{
+      const spent=getClubSpent(cl.name);
+      const remaining=cl.budget-spent;
+      return `<div class="row-item">
+        <div class="row-main"><div class="row-title">${cl.name}</div>${cl.advisor?`<div class="row-sub">${cl.advisor}</div>`:''}</div>
+        <div style="text-align:right">
+          <div style="font-size:13px;font-family:'DM Mono',monospace;color:${remaining>=0?'var(--green)':'var(--red)'}">${fmt(remaining)} left</div>
+          <div style="font-size:11px;color:var(--hint)">${fmt(spent)} of ${fmt(cl.budget)}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ── RENDER ALL ────────────────────────────────────────────────────────
+function renderAll(){
+  populateMonthFilter();
+  renderOverview();
+  renderBudgetTab();
+  renderHours();
+  renderBudgets();
+  renderProjects();
+  renderHoursAlerts();
+}
+
+// ── THEME ─────────────────────────────────────────────────────────────
+function loadTheme(){
+  const dark=localStorage.getItem('ims-fin-theme')==='dark';
+  document.body.classList.toggle('dark',dark);
+  const btn=document.getElementById('theme-btn');
+  if(btn)btn.textContent=dark?'☀️':'🌙';
+}
+function toggleTheme(){
+  const dark=!document.body.classList.contains('dark');
+  localStorage.setItem('ims-fin-theme',dark?'dark':'light');
+  document.body.classList.toggle('dark',dark);
+  const btn=document.getElementById('theme-btn');
+  if(btn)btn.textContent=dark?'☀️':'🌙';
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&document.getElementById('gate').style.display!=='none')checkGate();
+});
+// Set default dates
+document.querySelectorAll('input[type=date]').forEach(el=>el.value=today);
+document.getElementById('goal-name-in').value=localStorage.getItem('ims-fin-goal-name')||'';
+document.getElementById('goal-amt-in').value=localStorage.getItem('ims-fin-goal')||'';
+</script>
+</body>
+</html>
