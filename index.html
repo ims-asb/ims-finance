@@ -189,54 +189,6 @@ body.dark .tag.over{background:#2a0d0d;border-color:#7a2020}
   </div>
 
 
-  <!-- ASB BUDGET -->
-  <div id="s-budget" class="sec">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <h2 style="font-size:16px;font-weight:500">ASB Budget</h2>
-      <div style="display:flex;gap:8px">
-        <select id="month-filter" class="btn" style="font-size:12px;padding:5px 10px" onchange="renderBudgetTab()">
-          <option value="all">All months</option>
-        </select>
-        <button class="btn sm primary" onclick="openModal('add-txn-modal')">+ Add transaction</button>
-      </div>
-    </div>
-    <div class="grid3" id="budget-metrics">
-      <div class="metric"><div class="metric-lbl">Balance</div><div class="metric-val neu" id="b-bal">$0.00</div></div>
-      <div class="metric"><div class="metric-lbl">Income</div><div class="metric-val pos" id="b-inc">$0.00</div></div>
-      <div class="metric"><div class="metric-lbl">Expenses</div><div class="metric-val neg" id="b-exp">$0.00</div></div>
-    </div>
-    <!-- Goal progress -->
-    <div id="b-goal-wrap" class="card" style="display:none;margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <span id="b-goal-name" style="font-size:13px;font-weight:500">Fundraising goal</span>
-        <span id="b-goal-pct" style="font-size:12px;font-family:'DM Mono',monospace;color:var(--muted)">0%</span>
-      </div>
-      <div class="progress-wrap"><div class="progress-bar" id="b-goal-bar" style="width:0%"></div></div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;font-family:'DM Mono',monospace;color:var(--hint);margin-top:4px">
-        <span id="b-goal-raised">$0 raised</span><span id="b-goal-target">goal: $0</span>
-      </div>
-    </div>
-    <!-- Goal setter -->
-    <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
-      <input type="text" id="goal-name-in" placeholder="Goal name (e.g. Spring Dance Fund)" style="flex:1;font-size:13px;padding:6px 10px">
-      <input type="number" id="goal-amt-in" placeholder="Amount ($)" style="width:120px;font-size:13px;padding:6px 10px">
-      <button class="btn sm" onclick="saveGoalFin()">Set goal</button>
-    </div>
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <span class="card-title" style="margin-bottom:0">Transaction history</span>
-        <button class="btn sm" onclick="exportCSV()">⬇ Export CSV</button>
-      </div>
-      <div id="txn-list"><div class="empty">No transactions yet.</div></div>
-    </div>
-    <!-- Expense chart -->
-    <div class="card" id="expense-chart-card" style="margin-top:12px;display:none">
-      <div class="card-title">Expenses by category</div>
-      <div id="expense-chart"></div>
-    </div>
-  </div>
-
-
   <!-- CLUB HOURS -->
   <div id="s-hours" class="sec">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
@@ -576,6 +528,8 @@ function initFirebase(){
       data.expenses=d.expenses?Object.values(d.expenses):[],
       data.projects=d.projects?Object.values(d.projects):[],
       data.projectEntries=d.projectEntries?Object.values(d.projectEntries):[];
+      if(d.goal){finGoal=d.goal.amount||0;finGoalName=d.goal.name||'Fundraising goal';
+        localStorage.setItem('ims-fin-goal',finGoal);localStorage.setItem('ims-fin-goal-name',finGoalName);}
       renderAll();
     });
   }catch(e){toast('Firebase error: '+e.message);}
@@ -584,7 +538,8 @@ function initFirebase(){
 function save(){
   if(!db)return;
   const toObj=arr=>arr.reduce((o,i)=>{o[i.id]=i;return o;},{});
-  db.ref('ims-financial').set({
+  // update() preserves siblings like /goal — set() here would wipe them
+  db.ref('ims-financial').update({
     txns:toObj(data.txns),
     hours:toObj(data.hours),
     clubs:toObj(data.clubs),
