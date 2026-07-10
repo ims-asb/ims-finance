@@ -120,6 +120,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 /* ── METRIC CARDS ── */
 .metric{transition:box-shadow .15s}
 .metric:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
+
+.test-banner{display:none;align-items:center;gap:10px;background:#fffbe6;border:1px solid #f5d84e;border-radius:var(--radius-sm);padding:9px 14px;margin-bottom:14px;font-size:13px;color:#7a6200}
+body.dark .test-banner{background:#2a2500;border-color:#6b5c00;color:#e0c040}
+.test-banner button{background:none;border:1px solid currentColor;border-radius:4px;padding:3px 10px;font-size:12px;cursor:pointer;color:inherit;font-family:'DM Sans',sans-serif}
 </style>
 </head>
 <body>
@@ -151,6 +155,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     </div>
     <div class="hdr-right">
       <button class="icon-btn" id="theme-btn" onclick="toggleTheme()">🌙</button>
+      <button class="icon-btn" id="btn-test-fin" style="display:none" onclick="loadTestFin()">⚗ Test</button>
       <button class="icon-btn" onclick="window.open('https://github.com/ims-asb/ims-finance/blob/main/index.html','_blank')" title="View source on GitHub">🐙 GitHub</button>
       <button class="icon-btn" onclick="logout()">Sign out</button>
     </div>
@@ -165,7 +170,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   </div>
 
   <!-- OVERVIEW -->
-  <div id="s-overview" class="sec on">
+  
+<div id="test-banner" class="test-banner">
+  <span>⚗ <strong>Test mode</strong> — sample data, nothing saved to Firebase.</span>
+  <button onclick="clearTestFin()">Exit test mode</button>
+</div>
+
+<div id="s-overview" class="sec on">
     <div id="hours-alerts"></div>
     <div class="grid3" id="ov-metrics">
       <div class="metric"><div class="metric-lbl">Total clubs</div><div class="metric-val neu" id="ov-clubs">0</div></div>
@@ -407,6 +418,63 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
 
+// =============================================================================
+// ASB FINANCIAL MANAGER
+// A free, self-hosted financial tracking app for middle/high school ASB programs.
+// Companion to ASB Hub — kept separate so financial data stays private.
+// Built by Luke Li (IMS ASB Treasurer 2026-27). Open-source — fork and adapt freely.
+//
+// WHAT IT TRACKS:
+//   ASB Budget      — income/expenses, fundraising goal, CSV export
+//   Club Hours      — teacher hours per club, 25h warning/30h limit, payroll CSV
+//   Club Budgets    — per-club allocation and spending
+//   Project Funding — multi-entry ledger per project, status tracking
+//
+// QUICK START:
+//   1. Create a Firebase Realtime Database at console.firebase.google.com
+//   2. Fill in SCHOOL_CONFIG_FIN below
+//   3. Upload index.html to GitHub Pages
+//
+// See README.md for full setup guide.
+// =============================================================================
+
+// =============================================================================
+// SCHOOL_CONFIG_FIN — the only section you need to change for a new school
+// =============================================================================
+const SCHOOL_CONFIG_FIN = {
+  schoolName: 'IMS',
+  schoolYear: '2026-2027',
+
+  // Firebase config — paste from Firebase console
+  firebase: {
+    apiKey:            "YOUR_API_KEY",
+    authDomain:        "YOUR_PROJECT.firebaseapp.com",
+    projectId:         "YOUR_PROJECT",
+    storageBucket:     "YOUR_PROJECT.firebasestorage.app",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId:             "YOUR_APP_ID",
+    databaseURL:       "https://YOUR_PROJECT-default-rtdb.firebaseio.com"
+  },
+
+  // Firebase path for financial data (change if sharing a Firebase project with the hub)
+  firebasePath: 'ims-financial',
+
+  // Who can log in — set your own passwords here
+  accessCodes: {
+    'your-treasurer-password':  'Treasurer',
+    'your-advisor-password':    'Advisor',
+    'your-bookkeeper-password': 'Bookkeeper',
+  },
+
+  // Monthly hours limits per teacher
+  hoursWarningLimit: 25,
+  hoursHardLimit:    30,
+};
+// =============================================================================
+// END SCHOOL_CONFIG_FIN
+// =============================================================================
+
+
 // ── PROFANITY FILTER ──────────────────────────────────────────────────
 const _BAD_WORDS=['fuck','shit','ass','bitch','damn','crap','piss','dick','cock','pussy','cunt','bastard','hell','whore','slut','fag','n1gger','nigger','f4g','sh1t','b1tch','a55'];
 function hasProfanity(t){const l=t.toLowerCase().replace(/[@3€]/g,'a').replace(/[0]/g,'o').replace(/[1!|]/g,'i').replace(/[5$]/g,'s').replace(/[4]/g,'a').replace(/[7]/g,'t').replace(/[9]/g,'g');return _BAD_WORDS.some(w=>l.includes(w));}
@@ -438,7 +506,7 @@ function saveGoalFin(){
   finGoal=amt;finGoalName=name;
   localStorage.setItem('ims-fin-goal',amt);
   localStorage.setItem('ims-fin-goal-name',name);
-  if(db)db.ref('ims-financial/goal').set({amount:amt,name});
+  if(db)db.ref(SCHOOL_CONFIG_FIN.firebasePath+'/goal').set({amount:amt,name});
   renderBudgetTab();toast('Goal saved');
 }
 
@@ -526,7 +594,7 @@ function exportHoursCSV(){
   });
   const summary=[['','MONTHLY SUMMARY','','',''],['Month','Teacher','Club','Total Hours','Status']];
   Object.values(byTeacher).sort((a,b)=>a.month.localeCompare(b.month)||a.teacher.localeCompare(b.teacher)).forEach(r=>{
-    const status=r.hours>=30?'OVER LIMIT ('+r.hours+'h)':r.hours>=25?'Near limit ('+r.hours+'h)':'OK ('+r.hours+'h)';
+    const status=r.hours>=SCHOOL_CONFIG_FIN.hoursHardLimit?'OVER LIMIT ('+r.hours+'h)':r.hours>=SCHOOL_CONFIG_FIN.hoursWarningLimit?'Near limit ('+r.hours+'h)':'OK ('+r.hours+'h)';
     summary.push([r.month,r.teacher,r.club,r.hours,status]);
   });
   const rows=[...detail,[''],[''],['MONTHLY PAYROLL SUMMARY'],...summary];
@@ -553,26 +621,96 @@ function exportCSV(){
   toast('CSV downloaded');
 }
 
+
+// ── RATE LIMITING ─────────────────────────────────────────────────────
+const RL_MAX_FIN = 5;
+const RL_LOCKOUT_FIN = 10 * 60 * 1000;
+
+function rlCheckFin(){
+  try{
+    const d = JSON.parse(localStorage.getItem('ims-rl-gate')||'{}');
+    if(d.until && Date.now() < d.until){
+      const mins = Math.ceil((d.until - Date.now()) / 60000);
+      return {locked:true, mins};
+    }
+    return {locked:false, attempts: d.attempts||0};
+  }catch(e){return {locked:false, attempts:0};}
+}
+function rlFailFin(){
+  try{
+    const d = JSON.parse(localStorage.getItem('ims-rl-gate')||'{}');
+    const attempts = (d.attempts||0) + 1;
+    if(attempts >= RL_MAX_FIN){
+      localStorage.setItem('ims-rl-gate', JSON.stringify({attempts, until: Date.now()+RL_LOCKOUT_FIN}));
+      return {locked:true, mins:10};
+    }
+    localStorage.setItem('ims-rl-gate', JSON.stringify({attempts}));
+    return {locked:false, left: RL_MAX_FIN - attempts};
+  }catch(e){return {locked:false, left:1};}
+}
+function rlClearFin(){ localStorage.removeItem('ims-rl-gate'); }
+
+// ── FIREBASE CODES ─────────────────────────────────────────────────────
+// Access codes loaded from Firebase so they don't appear in View Source.
+// CODES below is seed-only (first run). Firebase is source of truth after that.
+let CODES_LIVE = null;
+
+function getCode(pw){
+  return (CODES_LIVE && CODES_LIVE[pw]) || CODES[pw] || null;
+}
+
+function loadCodesFromFirebase(db){
+  db.ref(SCHOOL_CONFIG_FIN.firebasePath+'/config/codes').once('value').then(snap=>{
+    const stored = snap.val();
+    if(stored){
+      CODES_LIVE = stored;
+    } else {
+      // First run — seed Firebase
+      db.ref(SCHOOL_CONFIG_FIN.firebasePath+'/config/codes').set(CODES);
+      CODES_LIVE = {...CODES};
+    }
+  }).catch(()=>{});
+}
+
 // ── AUTH ──────────────────────────────────────────────────────────────
-const CODES={
-  'lukelitreasurer2026':'Luke Li (Treasurer)',
-  'mzweedandmsgalearecool':'Advisor',
-  'vasanthaimbookkeeper2026':'Ms. Vasantha (Bookkeeper)'
-};
+const CODES = Object.keys(SCHOOL_CONFIG_FIN.accessCodes)[0] !== 'your-treasurer-password'
+  ? SCHOOL_CONFIG_FIN.accessCodes
+  : {'lukelitreasurer2026':'Luke Li (Treasurer)','mzweedandmsgalearecool':'Advisor','vasanthaimbookkeeper2026':'Ms. Vasantha (Bookkeeper)'};
 let currentUser='';
 
 function checkGate(){
-  const pw=document.getElementById('gate-input').value.trim();
-  const user=CODES[pw];
-  if(!user){
-    document.getElementById('gate-error').textContent='Wrong access code.';
-    document.getElementById('gate-input').value='';
+  const rl = rlCheckFin();
+  const errEl = document.getElementById('gate-error');
+  const inp = document.getElementById('gate-input');
+
+  if(rl.locked){
+    errEl.textContent='Too many attempts — try again in '+rl.mins+' min';
+    inp.disabled=true;
     return;
   }
+
+  const pw = inp.value.trim();
+  const user = getCode(pw);
+  if(!user){
+    const fail = rlFailFin();
+    if(fail.locked){
+      errEl.textContent='Too many attempts — locked for 10 minutes';
+      inp.disabled=true;
+    } else {
+      errEl.textContent='Wrong access code — '+fail.left+' attempt'+(fail.left===1?'':'s')+' left';
+      inp.value='';
+    }
+    return;
+  }
+
+  rlClearFin();
   currentUser=user;
   document.getElementById('gate').style.display='none';
   document.getElementById('app').style.display='block';
-  document.getElementById('hdr-user').textContent=user+' · 2026–2027';
+  if(pw==='lukelitreasurer2026'||pw===Object.keys(CODES||{})[0]){
+    const tb=document.getElementById('btn-test-fin');if(tb)tb.style.display='';
+  }
+  document.getElementById('hdr-user').textContent=user+' · '+SCHOOL_CONFIG_FIN.schoolYear;
   initFirebase();
   loadTheme();
   renderAll();
@@ -588,20 +726,23 @@ function logout(){
 }
 
 // ── FIREBASE ──────────────────────────────────────────────────────────
-const FB_CONFIG={"apiKey":"AIzaSyDYBkwL0zaypB0Q9y-17Gd5SG9co36wuz4","authDomain":"ims-asb-hub.firebaseapp.com","projectId":"ims-asb-hub","storageBucket":"ims-asb-hub.firebasestorage.app","messagingSenderId":"340484704921","appId":"1:340484704921:web:09b6122b53dca0c6f90608","databaseURL":"https://ims-asb-hub-default-rtdb.firebaseio.com"};
+const FB_CONFIG = SCHOOL_CONFIG_FIN.firebase.apiKey === 'YOUR_API_KEY'
+  ? {"apiKey":"AIzaSyDYBkwL0zaypB0Q9y-17Gd5SG9co36wuz4","authDomain":"ims-asb-hub.firebaseapp.com","projectId":"ims-asb-hub","storageBucket":"ims-asb-hub.firebasestorage.app","messagingSenderId":"340484704921","appId":"1:340484704921:web:09b6122b53dca0c6f90608","databaseURL":"https://ims-asb-hub-default-rtdb.firebaseio.com"}
+  : SCHOOL_CONFIG_FIN.firebase;
 let db=null;
 
 function initFirebase(){
   try{
     const app=firebase.apps.length?firebase.app():firebase.initializeApp(FB_CONFIG);
     db=firebase.database(app);
-    db.ref('ims-financial/goal').once('value').then(snap=>{
+    loadCodesFromFirebase(db);
+    db.ref(SCHOOL_CONFIG_FIN.firebasePath+'/goal').once('value').then(snap=>{
     const g=snap.val();
     if(g){finGoal=g.amount||0;finGoalName=g.name||'Fundraising goal';
       localStorage.setItem('ims-fin-goal',finGoal);
       localStorage.setItem('ims-fin-goal-name',finGoalName);}
   });
-  db.ref('ims-financial').on('value',snap=>{
+  db.ref(SCHOOL_CONFIG_FIN.firebasePath).on('value',snap=>{
       const d=snap.val()||{};
       data.txns=d.txns?Object.values(d.txns):[],
       data.hours=d.hours?Object.values(d.hours):[],
@@ -617,10 +758,10 @@ function initFirebase(){
 }
 
 function save(){
-  if(!db)return;
+  if(!db||testModeFin)return;
   const toObj=arr=>arr.reduce((o,i)=>{o[i.id]=i;return o;},{});
   // update() preserves siblings like /goal — set() here would wipe them
-  db.ref('ims-financial').update({
+  db.ref(SCHOOL_CONFIG_FIN.firebasePath).update({
     txns:toObj(data.txns),
     hours:toObj(data.hours),
     clubs:toObj(data.clubs),
@@ -1010,6 +1151,120 @@ function pwaSplashDismiss(){
   const dismissed=localStorage.getItem('ims-fin-splash');
   if(isPhone&&!isStandalone&&!dismissed){
     const s=document.getElementById('pwa-splash');if(s)s.style.display='flex';
+  }
+})();
+
+
+// ── FINANCE TEST MODE ─────────────────────────────────────────────────
+let testModeFin = false;
+const FIN_TEST = {
+  txns:[
+    {id:1,type:'income',amount:2800,date:'2026-09-15',category:'ASB Cards',description:'ASB card sales — 80 cards @ $35'},
+    {id:2,type:'income',amount:1200,date:'2026-10-25',category:'Fundraiser',description:'Monster Mash BINGO ticket sales'},
+    {id:3,type:'expense',amount:450,date:'2026-10-25',category:'Event',description:'Monster Mash decorations + prizes'},
+    {id:4,type:'income',amount:600,date:'2026-10-25',category:'Fundraiser',description:'BINGO bake sale proceeds'},
+    {id:5,type:'expense',amount:280,date:'2026-11-10',category:'Supplies',description:'Spirit week props + poster supplies'},
+    {id:6,type:'income',amount:900,date:'2026-11-15',category:'Fundraiser',description:'Fall fundraiser proceeds'},
+  ],
+  hours:[
+    {id:1,teacher:'Ms. Johnson',club:'Chess Club',date:'2026-09-10',hours:3,notes:'First meeting'},
+    {id:2,teacher:'Mr. Park',club:'Art Club',date:'2026-09-12',hours:2,notes:''},
+    {id:3,teacher:'Ms. Johnson',club:'Chess Club',date:'2026-09-17',hours:3,notes:''},
+    {id:4,teacher:'Mr. Park',club:'Art Club',date:'2026-09-19',hours:2,notes:'Mural project'},
+    {id:5,teacher:'Ms. Johnson',club:'Chess Club',date:'2026-10-01',hours:3,notes:'Tournament prep'},
+    {id:6,teacher:'Ms. Rivera',club:'Drama Club',date:'2026-10-05',hours:4,notes:'Fall play rehearsal'},
+    {id:7,teacher:'Mr. Park',club:'Art Club',date:'2026-10-08',hours:2,notes:''},
+    {id:8,teacher:'Ms. Rivera',club:'Drama Club',date:'2026-10-12',hours:4,notes:'Costume fitting'},
+    {id:9,teacher:'Ms. Rivera',club:'Drama Club',date:'2026-10-19',hours:4,notes:'Tech rehearsal'},
+    {id:10,teacher:'Ms. Johnson',club:'Chess Club',date:'2026-10-22',hours:3,notes:'Regional qualifier'},
+    {id:11,teacher:'Ms. Rivera',club:'Drama Club',date:'2026-10-26',hours:5,notes:'Opening night'},
+    {id:12,teacher:'Ms. Rivera',club:'Drama Club',date:'2026-10-27',hours:5,notes:'Closing night — 33h this month total'},
+  ],
+  clubs:[
+    {id:1,name:'Chess Club',advisor:'Ms. Johnson',budget:300},
+    {id:2,name:'Art Club',advisor:'Mr. Park',budget:500},
+    {id:3,name:'Drama Club',advisor:'Ms. Rivera',budget:800},
+    {id:4,name:'Math Olympiad',advisor:'Mr. Chen',budget:200},
+  ],
+  expenses:[
+    {id:1,club:'Chess Club',type:'expense',amount:85,date:'2026-09-20',desc:'Chess sets × 2'},
+    {id:2,club:'Art Club',type:'expense',amount:220,date:'2026-09-25',desc:'Paint + canvas supplies'},
+    {id:3,club:'Drama Club',type:'expense',amount:350,date:'2026-10-01',desc:'Costume rental'},
+    {id:4,club:'Art Club',type:'expense',amount:130,date:'2026-10-10',desc:'Mural materials'},
+    {id:5,club:'Drama Club',type:'expense',amount:420,date:'2026-10-15',desc:'Stage lighting rental'},
+  ],
+  projects:[
+    {id:1,name:'New Cafeteria Benches',budget:2000,date:'2027-03-01',desc:'Replace old benches in main cafeteria',status:'active'},
+    {id:2,name:'Library Refresh',budget:1500,date:'2027-01-15',desc:'New bean bags + study pods',status:'active'},
+    {id:3,name:'Spring Dance AV',budget:800,date:'2027-04-18',desc:'Sound system rental for spring dance',status:'active'},
+  ],
+  projectEntries:[
+    {id:1,projectId:1,type:'expense',amount:500,date:'2026-10-01',desc:'Deposit — bench supplier'},
+    {id:2,projectId:2,type:'expense',amount:300,date:'2026-10-15',desc:'Bean bag order — 6 units'},
+    {id:3,projectId:3,type:'expense',amount:200,date:'2026-11-01',desc:'AV company deposit'},
+  ],
+  goal:{amount:5000,name:'IMS Panther Fund 2026-27'},
+};
+
+function loadTestFin(){
+  testModeFin=true;
+  data={
+    txns:FIN_TEST.txns.map(x=>({...x})),
+    hours:FIN_TEST.hours.map(x=>({...x})),
+    clubs:FIN_TEST.clubs.map(x=>({...x})),
+    expenses:FIN_TEST.expenses.map(x=>({...x})),
+    projects:FIN_TEST.projects.map(x=>({...x})),
+    projectEntries:FIN_TEST.projectEntries.map(x=>({...x})),
+  };
+  finGoal=FIN_TEST.goal.amount;
+  finGoalName=FIN_TEST.goal.name;
+  document.getElementById('test-banner').style.display='flex';
+  renderAll();
+  go('overview');
+  toast('Test data loaded!','ok');
+}
+
+function clearTestFin(){
+  testModeFin=false;
+  data={txns:[],hours:[],clubs:[],expenses:[],projects:[],projectEntries:[]};
+  finGoal=0;finGoalName='Fundraising goal';
+  document.getElementById('test-banner').style.display='none';
+  if(db&&isConnected){
+    db.ref(SCHOOL_CONFIG_FIN.firebasePath).once('value').then(snap=>{
+      const d=snap.val()||{};
+      data.txns=d.txns?Object.values(d.txns):[];
+      data.hours=d.hours?Object.values(d.hours):[];
+      data.clubs=d.clubs?Object.values(d.clubs):[];
+      data.expenses=d.expenses?Object.values(d.expenses):[];
+      data.projects=d.projects?Object.values(d.projects):[];
+      data.projectEntries=d.projectEntries?Object.values(d.projectEntries):[];
+      if(d.goal){finGoal=d.goal.amount||0;finGoalName=d.goal.name||'Fundraising goal';}
+      renderAll();
+    });
+  } else renderAll();
+  toast('Back to real data','ok');
+}
+
+
+// Check rate limit on page load and disable input if locked
+(function(){
+  const rl = rlCheckFin();
+  if(rl.locked){
+    const inp = document.getElementById('gate-input');
+    const err = document.getElementById('gate-error');
+    if(inp) inp.disabled = true;
+    if(err) err.textContent = 'Too many attempts — try again in '+rl.mins+' min';
+    // Count down every minute
+    const interval = setInterval(()=>{
+      const r2 = rlCheckFin();
+      if(!r2.locked){
+        clearInterval(interval);
+        if(inp) inp.disabled = false;
+        if(err) err.textContent = '';
+      } else {
+        if(err) err.textContent = 'Too many attempts — try again in '+r2.mins+' min';
+      }
+    }, 30000);
   }
 })();
 
