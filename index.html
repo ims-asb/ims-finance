@@ -420,6 +420,7 @@ body.dark .test-banner{background:#2a2500;border-color:#6b5c00;color:#e0c040}
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script>
 
 // =============================================================================
@@ -728,7 +729,13 @@ const CODES = Object.keys(SCHOOL_CONFIG_FIN.accessCodes)[0] !== 'your-treasurer-
   : {'lukelitreasurer2026':'Luke Li (Treasurer)','mzweedandmsgalearecool':'Advisor','vasanthaimbookkeeper2026':'Ms. Vasantha (Bookkeeper)'};
 let currentUser='';
 
-function checkGate(){
+function ensureFirebaseAppReady(){
+  const app=firebase.apps.length?firebase.app():firebase.initializeApp(FB_CONFIG);
+  if(!auth)auth=firebase.auth(app);
+  return app;
+}
+
+async function checkGate(){
   const rl = rlCheckFin();
   const errEl = document.getElementById('gate-error');
   const inp = document.getElementById('gate-input');
@@ -753,6 +760,38 @@ function checkGate(){
     return;
   }
 
+  // Access code matched a known role — now get a REAL Firebase-verified
+  // sign-in, so the database rules can require auth != null instead of
+  // trusting this client-side check alone. The account is created
+  // automatically the first time each role ever logs in.
+  errEl.textContent='Signing in…';
+  inp.disabled=true;
+  try{
+    ensureFirebaseAppReady();
+    const email=authEmailFor(user);
+    try{
+      await auth.signInWithEmailAndPassword(email,pw);
+    }catch(authErr){
+      if(authErr.code==='auth/user-not-found'){
+        await auth.createUserWithEmailAndPassword(email,pw);
+      } else if(authErr.code==='auth/wrong-password'){
+        // The access code in Firebase's /config/codes was changed after
+        // this role's auth account was created — the two are now out of
+        // sync. Whoever manages Firebase needs to reset that user's
+        // password in the Firebase console (Authentication → Users).
+        errEl.textContent='Access code changed recently — ask whoever manages Firebase to reset your sign-in.';
+        inp.disabled=false;
+        return;
+      } else {
+        throw authErr;
+      }
+    }
+  }catch(authErr){
+    errEl.textContent='Sign-in error: '+authErr.message;
+    inp.disabled=false;
+    return;
+  }
+
   rlClearFin();
   currentUser=user;
   document.getElementById('gate').style.display='none';
@@ -768,6 +807,7 @@ function checkGate(){
 
 function logout(){
   if(!confirm('Sign out?'))return;
+  if(auth)auth.signOut().catch(()=>{});
   document.getElementById('gate').style.display='flex';
   document.getElementById('app').style.display='none';
   document.getElementById('gate-input').value='';
@@ -780,11 +820,20 @@ const FB_CONFIG = SCHOOL_CONFIG_FIN.firebase.apiKey === 'YOUR_API_KEY'
   ? {"apiKey":"AIzaSyDYBkwL0zaypB0Q9y-17Gd5SG9co36wuz4","authDomain":"ims-asb-hub.firebaseapp.com","projectId":"ims-asb-hub","storageBucket":"ims-asb-hub.firebasestorage.app","messagingSenderId":"340484704921","appId":"1:340484704921:web:09b6122b53dca0c6f90608","databaseURL":"https://ims-asb-hub-default-rtdb.firebaseio.com"}
   : SCHOOL_CONFIG_FIN.firebase;
 let db=null;
+let auth=null;
+// Firebase Auth needs an email — we don't collect real ones, so derive a
+// stable pseudo-email per role label. This is only ever used internally
+// as an account identifier, never shown or emailed to anyone.
+function authEmailFor(userLabel){
+  const slug=(userLabel||'user').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  return slug+'@ims-finance.local';
+}
 
 function initFirebase(){
   try{
     const app=firebase.apps.length?firebase.app():firebase.initializeApp(FB_CONFIG);
     db=firebase.database(app);
+    auth=firebase.auth(app);
     loadCodesFromFirebase(db);
     db.ref(SCHOOL_CONFIG_FIN.firebasePath+'/goal').once('value').then(snap=>{
     const g=snap.val();
