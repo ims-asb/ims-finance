@@ -10,6 +10,8 @@
   <meta name="apple-mobile-web-app-title" content="IMS Finance">
   <meta name="theme-color" content="#1a6b4a">
   <link rel="apple-touch-icon" href="icon-finance-192.png">
+  <!-- favicon.ico at the repo root is auto-detected by browsers — no link tag needed -->
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-finance-192.png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>IMS Financial Manager</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -124,14 +126,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .test-banner{display:none;align-items:center;gap:10px;background:#fffbe6;border:1px solid #f5d84e;border-radius:var(--radius-sm);padding:9px 14px;margin-bottom:14px;font-size:13px;color:#7a6200}
 body.dark .test-banner{background:#2a2500;border-color:#6b5c00;color:#e0c040}
 .test-banner button{background:none;border:1px solid currentColor;border-radius:4px;padding:3px 10px;font-size:12px;cursor:pointer;color:inherit;font-family:'DM Sans',sans-serif}
+#confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:9999;display:none}
 </style>
 </head>
 <body>
+<canvas id="confetti-canvas"></canvas>
 <!-- PASSWORD GATE -->
 <div id="gate" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)">
   <div style="width:100%;max-width:360px;padding:0 20px">
     <div style="text-align:center;margin-bottom:32px">
-      <div style="font-size:32px;margin-bottom:8px">📊</div>
+      <img src="icon-finance-192.png" width="56" height="56" style="border-radius:14px;margin-bottom:10px" alt="IMS Financial Manager icon">
       <h1 style="font-size:22px;font-weight:600;margin-bottom:4px">IMS Financial Manager</h1>
       <p style="font-size:13px;color:var(--muted)">Issaquah Middle School ASB · 2026–2027</p>
     </div>
@@ -510,6 +514,46 @@ function saveGoalFin(){
   renderBudgetTab();toast('Goal saved');
 }
 
+// Fires confetti once per goal (name+amount) the first time total income
+// reaches it, and pings the ASB Hub so it can celebrate too. Dedup key is
+// scoped to this specific goal so setting a new goal resets eligibility.
+function checkGoalConfetti(totalIncome){
+  if(!(finGoal>0)||totalIncome<finGoal)return;
+  const key='ims-fin-goal-confetti-'+finGoalName+'-'+finGoal;
+  if(localStorage.getItem(key))return;
+  localStorage.setItem(key,'1');
+  launchConfetti();
+  if(db)db.ref('ims-asb/goal-reached-at').set(Date.now());
+}
+
+function launchConfetti(){
+  const canvas=document.getElementById('confetti-canvas');
+  if(!canvas)return;
+  canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+  canvas.style.display='block';
+  const ctx=canvas.getContext('2d');
+  const pieces=Array.from({length:120},()=>({
+    x:Math.random()*canvas.width,y:-10,
+    w:8+Math.random()*8,h:8+Math.random()*8,
+    color:['#2a5caa','#1a6b4a','#e0b84a','#e05555','#6b9ff0'][Math.floor(Math.random()*5)],
+    rot:Math.random()*360,rotV:(Math.random()-0.5)*6,
+    vx:(Math.random()-0.5)*3,vy:2+Math.random()*3
+  }));
+  let frame=0;
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    pieces.forEach(p=>{
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot*Math.PI/180);
+      ctx.fillStyle=p.color;ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);ctx.restore();
+      p.x+=p.vx;p.y+=p.vy;p.rot+=p.rotV;p.vy+=0.05;
+    });
+    frame++;
+    if(frame<200)requestAnimationFrame(draw);
+    else{ctx.clearRect(0,0,canvas.width,canvas.height);canvas.style.display='none';}
+  }
+  draw();
+}
+
 function renderBudgetTab(){
   const mf=document.getElementById('month-filter').value;
   const txns=mf==='all'?data.txns:data.txns.filter(t=>t.date.startsWith(mf));
@@ -532,6 +576,12 @@ function renderBudgetTab(){
     document.getElementById('b-goal-bar').style.width=pct+'%';
     document.getElementById('b-goal-raised').textContent=fmt(inc)+' raised';
     document.getElementById('b-goal-target').textContent='goal: '+fmt(finGoal);
+    // Goal-hit check uses total income across ALL months, not just the
+    // current month-filter view — otherwise switching to a single month
+    // could make an already-met goal look unmet and never fire, or the
+    // reverse. The progress bar above still respects the filter as before.
+    const totalIncAll=data.txns.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    checkGoalConfetti(totalIncAll);
   }
   // transactions
   const list=document.getElementById('txn-list');
@@ -773,7 +823,8 @@ function save(){
 
 // ── DATA ──────────────────────────────────────────────────────────────
 let data={txns:[],hours:[],clubs:[],expenses:[],projects:[],projectEntries:[]};
-const HOURS_LIMIT=30;
+// SCHOOL_CONFIG_FIN.hoursHardLimit removed — use SCHOOL_CONFIG_FIN.hoursHardLimit / hoursWarningLimit directly
+// so a school that customizes these values doesn't get silently ignored here.
 const today=(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})();
 
 // ── HELPERS ───────────────────────────────────────────────────────────
@@ -833,10 +884,10 @@ function renderHoursAlerts(){
   data.hours.filter(h=>h.date.startsWith(month)).forEach(h=>{
     byTeacher[h.teacher]=(byTeacher[h.teacher]||0)+h.hours;
   });
-  const alerts=Object.entries(byTeacher).filter(([,h])=>h>=25);
-  const alertHtml=alerts.map(([t,h])=>`<div class="alert-row ${h>=HOURS_LIMIT?'':'warn'}">
-    ${h>=HOURS_LIMIT?'🔴':'🟡'} <strong>${t}</strong> has ${h}h this month
-    ${h>=HOURS_LIMIT?'<span style="color:var(--red)"> — EXCEEDS 30hr limit</span>':'<span style="color:var(--orange)"> — approaching 30hr limit</span>'}
+  const alerts=Object.entries(byTeacher).filter(([,h])=>h>=SCHOOL_CONFIG_FIN.hoursWarningLimit);
+  const alertHtml=alerts.map(([t,h])=>`<div class="alert-row ${h>=SCHOOL_CONFIG_FIN.hoursHardLimit?'':'warn'}">
+    ${h>=SCHOOL_CONFIG_FIN.hoursHardLimit?'🔴':'🟡'} <strong>${t}</strong> has ${h}h this month
+    ${h>=SCHOOL_CONFIG_FIN.hoursHardLimit?`<span style="color:var(--red)"> — EXCEEDS ${SCHOOL_CONFIG_FIN.hoursHardLimit}hr limit</span>`:`<span style="color:var(--orange)"> — approaching ${SCHOOL_CONFIG_FIN.hoursHardLimit}hr limit</span>`}
   </div>`).join('');
   ['hours-alerts','hours-alerts-tab'].forEach(id=>{
     const el=document.getElementById(id);
@@ -1051,19 +1102,19 @@ function renderOverview(){
   document.getElementById('ov-clubs').textContent=data.clubs.length;
   const byTeacher={};
   data.hours.filter(h=>h.date.startsWith(month)).forEach(h=>{byTeacher[h.teacher]=(byTeacher[h.teacher]||0)+h.hours;});
-  document.getElementById('ov-over').textContent=Object.values(byTeacher).filter(h=>h>=HOURS_LIMIT).length;
+  document.getElementById('ov-over').textContent=Object.values(byTeacher).filter(h=>h>=SCHOOL_CONFIG_FIN.hoursHardLimit).length;
   document.getElementById('ov-projects').textContent=data.projects.filter(p=>p.status==='active').length;
   // hours summary
   const hlist=document.getElementById('ov-hours-list');
   if(!Object.keys(byTeacher).length){hlist.innerHTML='<div class="empty">No hours this month.</div>';}
   else{
     hlist.innerHTML=Object.entries(byTeacher).sort((a,b)=>b[1]-a[1]).map(([t,h])=>{
-      const pct=Math.min(100,(h/HOURS_LIMIT)*100);
-      const status=h>=HOURS_LIMIT?'over':h>=25?'warn':'ok';
+      const pct=Math.min(100,(h/SCHOOL_CONFIG_FIN.hoursHardLimit)*100);
+      const status=h>=SCHOOL_CONFIG_FIN.hoursHardLimit?'over':h>=SCHOOL_CONFIG_FIN.hoursWarningLimit?'warn':'ok';
       return `<div style="margin-bottom:12px">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
           <span style="font-size:13px;font-weight:500">${t}</span>
-          <span style="font-size:12px;font-family:'DM Mono',monospace;color:${h>=HOURS_LIMIT?'var(--red)':h>=25?'var(--orange)':'var(--muted)'}">${h}/${HOURS_LIMIT}h</span>
+          <span style="font-size:12px;font-family:'DM Mono',monospace;color:${h>=SCHOOL_CONFIG_FIN.hoursHardLimit?'var(--red)':h>=SCHOOL_CONFIG_FIN.hoursWarningLimit?'var(--orange)':'var(--muted)'}">${h}/${SCHOOL_CONFIG_FIN.hoursHardLimit}h</span>
         </div>
         <div class="progress-wrap"><div class="progress-bar ${status}" style="width:${pct}%"></div></div>
       </div>`;
