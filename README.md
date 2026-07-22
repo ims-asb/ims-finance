@@ -1,4 +1,4 @@
-[README-finance.md](https://github.com/user-attachments/files/30280265/README-finance.md)# ASB Financial Manager
+ASB Financial Manager
 
 A free, self-hosted financial tracking app for middle and high school ASB programs.
 
