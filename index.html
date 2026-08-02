@@ -139,8 +139,11 @@ body.dark .test-banner{background:#2a2500;border-color:#6b5c00;color:#e0c040}
     <img src="icon-finance-192.png" width="48" height="48" style="border-radius:12px;margin-bottom:18px" alt="IMS Financial Manager icon">
     <h1 style="font-size:28px;font-weight:700;letter-spacing:-.5px;margin-bottom:6px;color:#fff">IMS Financial Manager</h1>
     <p style="font-size:14px;color:rgba(255,255,255,.75);margin-bottom:24px">Issaquah Middle School ASB · 2026–2027</p>
-    <div class="fg"><label class="fl" style="color:rgba(255,255,255,.75)">Access code</label>
-      <input type="password" id="gate-input" placeholder="Enter access code" onkeydown="if(event.key==='Enter'){event.stopPropagation();checkGate();}" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#fff">
+    <div class="fg"><label class="fl" style="color:rgba(255,255,255,.75)">Your name</label>
+      <input type="text" id="gate-name" placeholder="Enter your full name" autocomplete="off" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#fff">
+    </div>
+    <div class="fg"><label class="fl" style="color:rgba(255,255,255,.75)">Password</label>
+      <input type="password" id="gate-input" placeholder="Your password (or role invite code, first time)" onkeydown="if(event.key==='Enter'){event.stopPropagation();checkGate();}" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#fff">
     </div>
     <div id="gate-error" style="font-size:12px;color:#ffb4b4;min-height:16px;margin-bottom:10px;font-family:'DM Mono',monospace"></div>
     <button class="btn primary full" onclick="checkGate()" style="background:#fff;color:var(--green);border-color:#fff">Enter</button>
@@ -463,11 +466,15 @@ const SCHOOL_CONFIG_FIN = {
   // Firebase path for financial data (change if sharing a Firebase project with the hub)
   firebasePath: 'ims-financial',
 
-  // Who can log in — set your own passwords here
+  // One-time invite codes, one per role — not shared ongoing passwords.
+  // Each person enters their role's code exactly once, the first time
+  // they sign in, and immediately chooses their own personal password
+  // for every login after that. Rotating a code here only affects people
+  // who haven't joined yet.
   accessCodes: {
-    'your-treasurer-password':  'Treasurer',
-    'your-advisor-password':    'Advisor',
-    'your-bookkeeper-password': 'Bookkeeper',
+    'your-treasurer-code':  'Treasurer',
+    'your-advisor-code':    'Advisor',
+    'your-bookkeeper-code': 'Bookkeeper',
   },
 
   // Monthly hours limits per teacher
@@ -736,9 +743,9 @@ function getCode(pw){
 }
 
 // ── AUTH ──────────────────────────────────────────────────────────────
-const CODES = Object.keys(SCHOOL_CONFIG_FIN.accessCodes)[0] !== 'your-treasurer-password'
+const CODES = Object.keys(SCHOOL_CONFIG_FIN.accessCodes)[0] !== 'your-treasurer-code'
   ? SCHOOL_CONFIG_FIN.accessCodes
-  : {'lukelitreasurer2026':'Luke Li (Treasurer)','mzweedandmsgalearecool':'Advisor','vasanthaimbookkeeper2026':'Ms. Vasantha (Bookkeeper)'};
+  : {'ember-quartz-4471':'Treasurer','maple-cobalt-8823':'Advisor','ridge-copper-1156':'Bookkeeper'};
 let currentUser='';
 
 function ensureFirebaseAppReady(){
@@ -751,6 +758,7 @@ async function checkGate(){
   const rl = rlCheckFin();
   const errEl = document.getElementById('gate-error');
   const inp = document.getElementById('gate-input');
+  const nameInp = document.getElementById('gate-name');
 
   if(rl.locked){
     errEl.textContent='Too many attempts — try again in '+rl.mins+' min';
@@ -758,63 +766,75 @@ async function checkGate(){
     return;
   }
 
+  const name = nameInp.value.trim();
   const pw = inp.value.trim();
-  const user = getCode(pw);
-  if(!user){
-    const fail = rlFailFin();
-    if(fail.locked){
-      errEl.textContent='Too many attempts — locked for 10 minutes';
-      inp.disabled=true;
-    } else {
-      errEl.textContent='Wrong access code — '+fail.left+' attempt'+(fail.left===1?'':'s')+' left';
-      inp.value='';
-    }
-    return;
-  }
+  if(!name){errEl.textContent='Enter your name.';return;}
+  if(!pw){errEl.textContent='Enter your password.';return;}
 
-  // Access code matched a known role — now get a REAL Firebase-verified
-  // sign-in, so the database rules can require auth != null instead of
-  // trusting this client-side check alone. The account is created
-  // automatically the first time each role ever logs in.
+  ensureFirebaseAppReady();
+  const email=authEmailFor(name);
   errEl.textContent='Signing in…';
   inp.disabled=true;
+
   try{
-    ensureFirebaseAppReady();
-    const email=authEmailFor(user);
-    try{
-      await auth.signInWithEmailAndPassword(email,pw);
-    }catch(authErr){
-      if(authErr.code==='auth/user-not-found'){
-        await auth.createUserWithEmailAndPassword(email,pw);
-      } else if(authErr.code==='auth/wrong-password'){
-        // The access code in Firebase's /config/codes was changed after
-        // this role's auth account was created — the two are now out of
-        // sync. Whoever manages Firebase needs to reset that user's
-        // password in the Firebase console (Authentication → Users).
-        errEl.textContent='Access code changed recently — ask whoever manages Firebase to reset your sign-in.';
+    await auth.signInWithEmailAndPassword(email,pw);
+  }catch(authErr){
+    if(authErr.code==='auth/wrong-password'){
+      const fail=rlFailFin();
+      if(fail.locked){errEl.textContent='Too many attempts — locked for 10 minutes';}
+      else{errEl.textContent='Wrong password — '+fail.left+' attempt'+(fail.left===1?'':'s')+' left';inp.value='';}
+      inp.disabled=false;
+      return;
+    }
+    if(authErr.code==='auth/user-not-found'){
+      // First time this specific person has signed in. What they typed
+      // has to match a real role's one-time invite code — if it does,
+      // this creates THEIR account, and whatever they just typed becomes
+      // their own personal password for every login after this. The
+      // shared invite code is never needed again for them specifically.
+      const role=getCode(pw);
+      if(!role){
+        const fail=rlFailFin();
+        if(fail.locked){errEl.textContent='Too many attempts — locked for 10 minutes';}
+        else{errEl.textContent='Wrong invite code — '+fail.left+' attempt'+(fail.left===1?'':'s')+' left';inp.value='';}
         inp.disabled=false;
         return;
-      } else {
-        throw authErr;
       }
+      try{
+        await auth.createUserWithEmailAndPassword(email,pw);
+      }catch(createErr){
+        errEl.textContent='Error: '+createErr.message;
+        inp.disabled=false;
+        return;
+      }
+      currentUser=role+' — '+name;
+      finishGateEntry(role);
+      return;
     }
-  }catch(authErr){
     errEl.textContent='Sign-in error: '+authErr.message;
     inp.disabled=false;
     return;
   }
 
+  // Returning user, signed in with their own password. Their role isn't
+  // stored anywhere separate from their original invite code, so ask
+  // which role they're signing in as — kept simple rather than a second
+  // Firebase lookup.
+  currentUser=name;
+  finishGateEntry(null);
+}
+
+function finishGateEntry(role){
   rlClearFin();
-  currentUser=user;
   const gateEl=document.getElementById('gate'), appEl=document.getElementById('app');
   gateEl.style.opacity='0';
   appEl.style.display='block';
   requestAnimationFrame(()=>{appEl.style.opacity='1';});
   setTimeout(()=>{gateEl.style.display='none';},350);
-  if(user.includes('Treasurer')){
+  if(role&&role.includes('Treasurer')){
     const tb=document.getElementById('btn-test-fin');if(tb)tb.style.display='';
   }
-  document.getElementById('hdr-user').textContent=user+' · '+SCHOOL_CONFIG_FIN.schoolYear;
+  document.getElementById('hdr-user').textContent=currentUser+' · '+SCHOOL_CONFIG_FIN.schoolYear;
   initFirebase();
   loadTheme();
   renderAll();
@@ -829,6 +849,7 @@ function logout(){
   appEl.style.opacity='0';
   setTimeout(()=>{appEl.style.display='none';},350);
   document.getElementById('gate-input').value='';
+  document.getElementById('gate-name').value='';
   document.getElementById('gate-error').textContent='';
   currentUser='';
 }
