@@ -136,7 +136,6 @@ body.dark .test-banner{background:#2a2500;border-color:#6b5c00;color:#e0c040}
   <canvas id="gate-canvas" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
   <div style="width:100%;max-width:400px;padding:0 30px;text-align:left;position:relative">
     <div style="width:34px;height:3px;background:#fff;margin-bottom:24px"></div>
-    <img src="icon-finance-192.png" width="48" height="48" style="border-radius:12px;margin-bottom:18px" alt="IMS Financial Manager icon">
     <h1 style="font-size:28px;font-weight:700;letter-spacing:-.5px;margin-bottom:6px;color:#fff">IMS Financial Manager</h1>
     <p style="font-size:14px;color:rgba(255,255,255,.75);margin-bottom:24px">Issaquah Middle School ASB · 2026–2027</p>
     <div class="fg"><label class="fl" style="color:rgba(255,255,255,.75)">Your name</label>
@@ -597,8 +596,8 @@ function renderBudgetTab(){
   list.innerHTML=sorted.map(t=>`<div class="row-item">
     <div style="width:8px;height:8px;border-radius:50%;background:${t.type==='income'?'var(--green)':'var(--red)'};flex-shrink:0"></div>
     <div class="row-main">
-      <div class="row-title">${t.description}</div>
-      <div class="row-sub">${t.date} · ${t.category}</div>
+      <div class="row-title">${esc(t.description)}</div>
+      <div class="row-sub">${esc(t.date)} · ${esc(t.category)}</div>
     </div>
     <div style="font-size:14px;font-family:'DM Mono',monospace;color:${t.type==='income'?'var(--green)':'var(--red)'};margin-right:8px">${t.type==='income'?'+':'−'}${fmt(t.amount)}</div>
     <button style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:14px" onclick="delTxn(${t.id})">✕</button>
@@ -613,7 +612,7 @@ function renderBudgetTab(){
   const colors=['var(--accent)','var(--green)','#e0b84a','#e05555','#9b59b6','#e67e22'];
   chartEl.innerHTML=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([cat,amt],i)=>`
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-      <div style="font-size:12px;color:var(--muted);width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cat}</div>
+      <div style="font-size:12px;color:var(--muted);width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(cat)}</div>
       <div style="flex:1;background:var(--border);border-radius:4px;height:18px;overflow:hidden">
         <div style="width:${(amt/maxAmt*100).toFixed(0)}%;height:18px;background:${colors[i%colors.length]};border-radius:4px;transition:width .4s"></div>
       </div>
@@ -623,12 +622,12 @@ function renderBudgetTab(){
   const sel=document.getElementById('month-filter');
   const months=new Set(data.txns.map(t=>t.date.slice(0,7)));
   const cur=sel.value;
-  sel.innerHTML='<option value="all">All months</option>';
-  [...months].sort().reverse().forEach(m=>{
+  const monthOptions=[...months].sort().reverse().map(m=>{
     const [y,mo]=m.split('-');
     const label=new Date(y,parseInt(mo)-1).toLocaleDateString('default',{month:'long',year:'numeric'});
-    sel.innerHTML+=`<option value="${m}"${m===cur?' selected':''}>${label}</option>`;
-  });
+    return `<option value="${m}"${m===cur?' selected':''}>${label}</option>`;
+  }).join('');
+  sel.innerHTML='<option value="all">All months</option>'+monthOptions;
 }
 
 
@@ -973,8 +972,8 @@ function renderHours(){
   filtered.sort((a,b)=>b.date.localeCompare(a.date));
   list.innerHTML=filtered.map(h=>`<div class="row-item">
     <div class="row-main">
-      <div class="row-title">${h.teacher} — ${h.club}</div>
-      <div class="row-sub">${h.date}${h.notes?' · '+h.notes:''}</div>
+      <div class="row-title">${esc(h.teacher)} — ${esc(h.club)}</div>
+      <div class="row-sub">${esc(h.date)}${h.notes?' · '+esc(h.notes):''}</div>
     </div>
     <div class="row-val" style="margin-right:8px">${h.hours}h</div>
     <button class="btn sm" style="color:var(--hint);border:none;background:none;font-size:16px" onclick="delHours(${h.id})">✕</button>
@@ -1150,9 +1149,9 @@ function renderProjects(){
     return `<div class="card" style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <div>
-          <div style="font-size:15px;font-weight:500">${p.name}</div>
-          ${p.desc?`<div style="font-size:12px;color:var(--muted);margin-top:2px">${p.desc}</div>`:''}
-          ${p.date?`<div style="font-size:11px;color:var(--hint);font-family:'DM Mono',monospace;margin-top:2px">Target: ${p.date}</div>`:''}
+          <div style="font-size:15px;font-weight:500">${esc(p.name)}</div>
+          ${p.desc?`<div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(p.desc)}</div>`:''}
+          ${p.date?`<div style="font-size:11px;color:var(--hint);font-family:'DM Mono',monospace;margin-top:2px">Target: ${esc(p.date)}</div>`:''}
         </div>
         <div style="display:flex;gap:6px;align-items:center">
           <button class="btn sm" onclick="openProjectEntry(${p.id})">+ Entry</button>
@@ -1172,7 +1171,7 @@ function renderProjects(){
       <div class="progress-wrap"><div class="progress-bar ${status}" style="width:${pct}%"></div></div>
       ${entries.length?`<div style="margin-top:12px;font-size:12px;color:var(--hint);font-family:'DM Mono',monospace;margin-bottom:6px">LEDGER</div>`:''}
       ${entries.map(e=>`<div class="row-item" style="padding:7px 0">
-        <div class="row-main"><div style="font-size:13px">${e.desc}</div><div style="font-size:11px;color:var(--hint);font-family:'DM Mono',monospace">${e.date}</div></div>
+        <div class="row-main"><div style="font-size:13px">${esc(e.desc)}</div><div style="font-size:11px;color:var(--hint);font-family:'DM Mono',monospace">${esc(e.date)}</div></div>
         <div style="font-size:13px;font-family:'DM Mono',monospace;color:${e.type==='expense'?'var(--red)':'var(--green)'};margin-right:8px">${e.type==='expense'?'-':'+'}${fmt(e.amount)}</div>
         <button style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:13px" onclick="delProjectEntry(${e.id})">✕</button>
       </div>`).join('')}
@@ -1217,7 +1216,7 @@ function renderOverview(){
       const status=h>=SCHOOL_CONFIG_FIN.hoursHardLimit?'over':h>=SCHOOL_CONFIG_FIN.hoursWarningLimit?'warn':'ok';
       return `<div style="margin-bottom:12px">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span style="font-size:13px;font-weight:500">${t}</span>
+          <span style="font-size:13px;font-weight:500">${esc(t)}</span>
           <span style="font-size:12px;font-family:'DM Mono',monospace;color:${h>=SCHOOL_CONFIG_FIN.hoursHardLimit?'var(--red)':h>=SCHOOL_CONFIG_FIN.hoursWarningLimit?'var(--orange)':'var(--muted)'}">${h}/${SCHOOL_CONFIG_FIN.hoursHardLimit}h</span>
         </div>
         <div class="progress-wrap"><div class="progress-bar ${status}" style="width:${pct}%"></div></div>
@@ -1232,7 +1231,7 @@ function renderOverview(){
       const spent=getClubSpent(cl.name);
       const remaining=cl.budget-spent;
       return `<div class="row-item">
-        <div class="row-main"><div class="row-title">${cl.name}</div>${cl.advisor?`<div class="row-sub">${cl.advisor}</div>`:''}</div>
+        <div class="row-main"><div class="row-title">${esc(cl.name)}</div>${cl.advisor?`<div class="row-sub">${esc(cl.advisor)}</div>`:''}</div>
         <div style="text-align:right">
           <div style="font-size:13px;font-family:'DM Mono',monospace;color:${remaining>=0?'var(--green)':'var(--red)'}">${fmt(remaining)} left</div>
           <div style="font-size:11px;color:var(--hint)">${fmt(spent)} of ${fmt(cl.budget)}</div>
@@ -1519,7 +1518,6 @@ function clearTestFin(){
 
 <div id="pwa-splash" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--bg);align-items:center;justify-content:center;flex-direction:column;padding:24px">
   <div style="width:100%;max-width:380px;margin:auto;display:flex;flex-direction:column;align-items:center;text-align:center">
-    <img src="icon-finance-192.png" width="64" height="64" style="border-radius:16px;margin-bottom:16px" alt="IMS Financial Manager icon">
     <h1 style="font-size:28px;font-weight:600;letter-spacing:-.5px;margin-bottom:10px;line-height:1.2">IMS Financial Manager</h1>
     <p style="font-size:15px;color:var(--muted);line-height:1.6;margin-bottom:36px;max-width:280px">Add to your home screen for the full app experience — no browser bar, instant load.</p>
     <button onclick="pwaSplashInstall()" style="width:100%;padding:15px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:16px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;margin-bottom:12px">Yes, take me there →</button>
