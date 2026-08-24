@@ -37,7 +37,8 @@ header{display:flex;align-items:center;justify-content:space-between;padding:16p
 .icon-btn{background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--muted)}
 .icon-btn:hover{background:var(--surface)}
 .tabs{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:3px;margin-bottom:20px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.tab{padding:7px 14px;font-size:13px;font-family:'DM Sans',sans-serif;background:none;border:none;border-radius:4px;cursor:pointer;color:var(--muted);white-space:nowrap;transition:all .15s}
+.tab{padding:7px 14px;font-size:13px;font-family:'DM Sans',sans-serif;background:none;border:none;border-radius:4px;cursor:pointer;color:var(--muted);white-space:nowrap;transition:all .15s;position:relative}
+.badge{position:absolute;top:2px;right:2px;background:var(--red);color:#fff;font-size:10px;font-weight:600;border-radius:8px;min-width:16px;height:16px;display:flex;align-items:center;justify-content:center;padding:0 4px}
 .tab.on{background:var(--bg);color:var(--text);font-weight:500}
 .sec{display:none}.sec.on{display:block}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
@@ -46,6 +47,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:16p
 .btn{padding:8px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;transition:all .15s}
 .btn:hover{border-color:var(--border-strong)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.sm.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn.primary:hover{opacity:.9}
 .btn.danger{background:var(--red);border-color:var(--red);color:#fff}
 .btn.danger:hover{opacity:.9}
@@ -172,6 +174,7 @@ body.dark .test-banner{background:#2a2500;border-color:#6b5c00;color:#e0c040}
     <button class="tab" id="tab-hours" role="tab" aria-label="Club Hours" onclick="go('hours')"><span class="tab-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3.5l2.5 1.5"/></svg></span><span class="tab-label">Club Hours</span></button>
     <button class="tab" id="tab-budgets" role="tab" aria-label="Club Budgets" onclick="go('budgets')"><span class="tab-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M2 8h8M2 12h5"/><circle cx="13" cy="11" r="2.5"/><path d="M13 9.5v1M13 12.5v1M14.5 10.5a1.5 1.5 0 00-3 0c0 .83.67 1.3 1.5 1.5s1.5.67 1.5 1.5a1.5 1.5 0 01-3 0" stroke-width="1.3"/></svg></span><span class="tab-label">Club Budgets</span></button>
     <button class="tab" id="tab-projects" role="tab" aria-label="Projects" onclick="go('projects')"><span class="tab-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2" width="13" height="10" rx="1.5"/><path d="M5 14h6M8 12v2"/><path d="M5 6h6M5 8.5h4"/></svg></span><span class="tab-label">Projects</span></button>
+    <button class="tab" id="tab-requests" role="tab" aria-label="Requests" onclick="go('requests')"><span class="tab-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5h10v11H3z"/><path d="M5.5 6h5M5.5 8.5h5M5.5 11h3"/></svg></span><span class="tab-label">Requests</span><span id="requests-badge" class="badge" style="display:none">0</span></button>
   </div>
 
   <!-- OVERVIEW -->
@@ -285,7 +288,34 @@ body.dark .test-banner{background:#2a2500;border-color:#6b5c00;color:#e0c040}
     </div>
     <div id="projects-list"><div class="empty">No projects yet.</div></div>
   </div>
+
+  <!-- REQUESTS -->
+  <div id="s-requests" class="sec">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h2 style="font-size:16px;font-weight:500">Budget Requests</h2>
+      <button class="btn sm primary" onclick="openModal('add-request-modal')">+ New request</button>
+    </div>
+    <div style="margin-bottom:10px;display:flex;gap:6px">
+      <button class="btn sm on" id="rq-filter-pending" onclick="setRequestFilter('pending')">Pending</button>
+      <button class="btn sm" id="rq-filter-all" onclick="setRequestFilter('all')">All</button>
+    </div>
+    <div id="requests-list"><div class="empty">No requests yet.</div></div>
+  </div>
 </div>
+</div>
+
+<!-- ADD REQUEST MODAL -->
+<div id="add-request-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('add-request-modal')">
+  <div class="modal">
+    <h2>New budget request</h2>
+    <p>Log a funding request from a club, to track and approve.</p>
+    <div class="grid2">
+      <div class="fg"><label class="fl">Club / requester</label><input id="rq-club" placeholder="e.g. Robotics Club"></div>
+      <div class="fg"><label class="fl">Amount</label><input id="rq-amount" type="number" step="0.01" placeholder="0.00"></div>
+    </div>
+    <div class="fg"><label class="fl">What's it for?</label><textarea id="rq-reason" rows="2" placeholder="e.g. Competition entry fee"></textarea></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="closeModal('add-request-modal')">Cancel</button><button class="btn primary" onclick="addRequest()">Submit</button></div>
+  </div>
 </div>
 
 <!-- ADD HOURS MODAL -->
@@ -746,6 +776,7 @@ const CODES = Object.keys(SCHOOL_CONFIG_FIN.accessCodes)[0] !== 'your-treasurer-
   ? SCHOOL_CONFIG_FIN.accessCodes
   : {'ember-quartz-4471':'Treasurer','maple-cobalt-8823':'Advisor','ridge-copper-1156':'Bookkeeper'};
 let currentUser='';
+let finRole='';
 
 function ensureFirebaseAppReady(){
   const app=firebase.apps.length?firebase.app():firebase.initializeApp(FB_CONFIG);
@@ -807,7 +838,7 @@ async function checkGate(){
         return;
       }
       currentUser=role+' — '+name;
-      finishGateEntry(role);
+      finishGateEntry(role,name,true);
       return;
     }
     errEl.textContent='Sign-in error: '+authErr.message;
@@ -815,28 +846,54 @@ async function checkGate(){
     return;
   }
 
-  // Returning user, signed in with their own password. Their role isn't
-  // stored anywhere separate from their original invite code, so ask
-  // which role they're signing in as — kept simple rather than a second
-  // Firebase lookup.
+  // Returning user, signed in with their own password. Their role was
+  // recorded in Firebase the first time they registered, so look it up
+  // rather than dropping it — without this the header renders a different
+  // format on every visit after the first, and a returning Treasurer
+  // silently loses their Treasurer-only controls.
   currentUser=name;
-  finishGateEntry(null);
+  finishGateEntry(null,name,false);
 }
 
-function finishGateEntry(role){
+function finishGateEntry(role,name,isNew){
   rlClearFin();
   const gateEl=document.getElementById('gate'), appEl=document.getElementById('app');
   gateEl.style.opacity='0';
   appEl.style.display='block';
   requestAnimationFrame(()=>{appEl.style.opacity='1';});
   setTimeout(()=>{gateEl.style.display='none';},350);
-  if(role&&role.includes('Treasurer')){
-    const tb=document.getElementById('btn-test-fin');if(tb)tb.style.display='';
-  }
   document.getElementById('hdr-user').textContent=currentUser+' · '+SCHOOL_CONFIG_FIN.schoolYear;
   initFirebase();
   loadTheme();
   renderAll();
+  applyFinRole(role,name,isNew);
+}
+
+// Records the role against the Firebase Auth uid on first registration,
+// and reads it back on every later sign-in. The security rules also read
+// this record to identify who's acting, so it has to exist.
+function applyFinRole(role,name,isNew){
+  const grant=r=>{
+    finRole=r||'';
+    if(r){
+      currentUser=r+' — '+name;
+      document.getElementById('hdr-user').textContent=currentUser+' · '+SCHOOL_CONFIG_FIN.schoolYear;
+    }
+    if(r&&r.includes('Treasurer')){
+      const tb=document.getElementById('btn-test-fin');if(tb)tb.style.display='';
+    }
+  };
+  if(!db||!auth||!auth.currentUser){grant(role);return;}
+  const ref=db.ref(SCHOOL_CONFIG_FIN.firebasePath+'/identity/'+auth.currentUser.uid);
+  if(isNew&&role){
+    ref.set({name,role}).catch(()=>{});
+    grant(role);
+    return;
+  }
+  ref.once('value').then(snap=>{
+    const rec=snap.val();
+    grant(rec&&rec.role?rec.role:role);
+  }).catch(()=>grant(role));
 }
 
 function logout(){
@@ -851,6 +908,8 @@ function logout(){
   document.getElementById('gate-name').value='';
   document.getElementById('gate-error').textContent='';
   currentUser='';
+  finRole='';
+  const tb=document.getElementById('btn-test-fin');if(tb)tb.style.display='none';
 }
 
 // ── FIREBASE ──────────────────────────────────────────────────────────
@@ -885,7 +944,8 @@ function initFirebase(){
       data.clubs=d.clubs?Object.values(d.clubs):[],
       data.expenses=d.expenses?Object.values(d.expenses):[],
       data.projects=d.projects?Object.values(d.projects):[],
-      data.projectEntries=d.projectEntries?Object.values(d.projectEntries):[];
+      data.projectEntries=d.projectEntries?Object.values(d.projectEntries):[],
+      data.requests=d.requests?Object.values(d.requests):[];
       if(d.goal){finGoal=d.goal.amount||0;finGoalName=d.goal.name||'Fundraising goal';
         localStorage.setItem('ims-fin-goal',finGoal);localStorage.setItem('ims-fin-goal-name',finGoalName);}
       renderAll();
@@ -897,18 +957,22 @@ function save(){
   if(!db||testModeFin)return;
   const toObj=arr=>arr.reduce((o,i)=>{o[i.id]=i;return o;},{});
   // update() preserves siblings like /goal — set() here would wipe them
-  db.ref(SCHOOL_CONFIG_FIN.firebasePath).update({
-    txns:toObj(data.txns),
-    hours:toObj(data.hours),
-    clubs:toObj(data.clubs),
-    expenses:toObj(data.expenses),
-    projects:toObj(data.projects),
-    projectEntries:toObj(data.projectEntries)
-  }).catch(e=>toast('Save error: '+e.message));
+  // Written per collection rather than as one update() on the parent, so
+  // each write lands on a path that has its own security rule. /goal and
+  // /identity are siblings and are deliberately left untouched here.
+  const collections={
+    txns:data.txns,hours:data.hours,clubs:data.clubs,
+    expenses:data.expenses,projects:data.projects,
+    projectEntries:data.projectEntries,requests:data.requests,
+  };
+  Object.entries(collections).forEach(([key,arr])=>{
+    db.ref(SCHOOL_CONFIG_FIN.firebasePath+'/'+key).set(toObj(arr))
+      .catch(e=>toast('Save error ('+key+'): '+e.message));
+  });
 }
 
 // ── DATA ──────────────────────────────────────────────────────────────
-let data={txns:[],hours:[],clubs:[],expenses:[],projects:[],projectEntries:[]};
+let data={txns:[],hours:[],clubs:[],expenses:[],projects:[],projectEntries:[],requests:[]};
 // SCHOOL_CONFIG_FIN.hoursHardLimit removed — use SCHOOL_CONFIG_FIN.hoursHardLimit / hoursWarningLimit directly
 // so a school that customizes these values doesn't get silently ignored here.
 const today=(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})();
@@ -936,10 +1000,11 @@ function escJsAttr(s){
 function openModal(id){document.getElementById(id).classList.add('on');}
 function closeModal(id){document.getElementById(id).classList.remove('on');}
 function go(t){
-  ['overview','budget','hours','budgets','projects'].forEach(n=>{
+  ['overview','budget','hours','budgets','projects','requests'].forEach(n=>{
     document.getElementById('tab-'+n).classList.toggle('on',n===t);
     document.getElementById('s-'+n).classList.toggle('on',n===t);
   });
+  if(t==='requests')renderRequests();
 }
 
 // ── HOURS ─────────────────────────────────────────────────────────────
@@ -1198,6 +1263,69 @@ function delProjectEntry(id){
   data.projectEntries=data.projectEntries.filter(e=>e.id!==id);save();renderAll();toast('Deleted');
 }
 
+// ── BUDGET REQUESTS ───────────────────────────────────────────────────
+let requestFilter='pending';
+function setRequestFilter(f){
+  requestFilter=f;
+  document.getElementById('rq-filter-pending').classList.toggle('on',f==='pending');
+  document.getElementById('rq-filter-all').classList.toggle('on',f==='all');
+  renderRequests();
+}
+function addRequest(){
+  const club=document.getElementById('rq-club').value.trim();
+  const amount=parseFloat(document.getElementById('rq-amount').value);
+  const reason=document.getElementById('rq-reason').value.trim();
+  if(!club||!amount||!reason){toast('Fill in all fields');return;}
+  data.requests.push({id:Date.now(),club,amount,reason,status:'pending',requestedAt:new Date().toISOString().slice(0,10)});
+  save();renderAll();closeModal('add-request-modal');
+  ['rq-club','rq-amount','rq-reason'].forEach(id=>document.getElementById(id).value='');
+  toast('Request logged');
+}
+function setRequestStatus(id,status){
+  const r=data.requests.find(r=>r.id===id);
+  if(!r)return;
+  r.status=status;
+  r.resolvedBy=currentUser;
+  r.resolvedAt=new Date().toISOString().slice(0,10);
+  save();renderAll();
+  toast(status==='approved'?'Request approved':'Request denied');
+}
+function delRequest(id){
+  if(!confirm('Delete this request?'))return;
+  data.requests=data.requests.filter(r=>r.id!==id);save();renderAll();toast('Deleted');
+}
+function updateRequestsBadge(){
+  const badge=document.getElementById('requests-badge');
+  if(!badge)return;
+  const pending=data.requests.filter(r=>r.status==='pending').length;
+  badge.textContent=pending;
+  badge.style.display=pending?'flex':'none';
+}
+function renderRequests(){
+  const list=document.getElementById('requests-list');
+  if(!list)return;
+  const filtered=requestFilter==='pending'?data.requests.filter(r=>r.status==='pending'):data.requests;
+  const sorted=[...filtered].sort((a,b)=>b.id-a.id);
+  if(!sorted.length){list.innerHTML=`<div class="empty">No ${requestFilter==='pending'?'pending ':''}requests.</div>`;return;}
+  list.innerHTML=sorted.map(r=>`<div class="card" style="margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div style="font-size:15px;font-weight:500">${esc(r.club)}</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:2px">${esc(r.reason)}</div>
+        <div style="font-size:11px;color:var(--hint);font-family:'DM Mono',monospace;margin-top:4px">Requested ${esc(r.requestedAt)}${r.resolvedAt?' · Resolved '+esc(r.resolvedAt)+(r.resolvedBy?' by '+esc(r.resolvedBy):''):''}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:16px;font-family:'DM Mono',monospace;font-weight:600">${fmt(r.amount)}</div>
+        <span class="tag ${r.status==='approved'?'ok':r.status==='denied'?'over':'warn'}" style="margin-top:4px;display:inline-block">${r.status}</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:10px">
+      ${r.status==='pending'?`<button class="btn sm" style="color:var(--red);border-color:var(--red)" onclick="setRequestStatus(${r.id},'denied')">Deny</button><button class="btn sm primary" onclick="setRequestStatus(${r.id},'approved')">Approve</button>`:''}
+      <button style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:13px" onclick="delRequest(${r.id})">✕</button>
+    </div>
+  </div>`).join('');
+}
+
 // ── OVERVIEW ──────────────────────────────────────────────────────────
 function renderOverview(){
   const month=getCurrentMonthKey();
@@ -1250,6 +1378,7 @@ function renderAll(){
   renderBudgets();
   renderProjects();
   renderHoursAlerts();
+  updateRequestsBadge();
 }
 
 // ── THEME ─────────────────────────────────────────────────────────────
@@ -1449,6 +1578,11 @@ const FIN_TEST = {
     {id:2,projectId:2,type:'expense',amount:300,date:'2026-10-15',desc:'Bean bag order — 6 units'},
     {id:3,projectId:3,type:'expense',amount:200,date:'2026-11-01',desc:'AV company deposit'},
   ],
+  requests:[
+    {id:1,club:'Robotics Club',amount:120,reason:'Competition entry fee',status:'pending',requestedAt:'2026-11-12'},
+    {id:2,club:'Art Club',amount:45,reason:'Poster paper + paint',status:'approved',requestedAt:'2026-11-08',resolvedAt:'2026-11-09',resolvedBy:'Treasurer'},
+    {id:3,club:'Debate Team',amount:200,reason:'Tournament travel',status:'denied',requestedAt:'2026-11-05',resolvedAt:'2026-11-06',resolvedBy:'Advisor'},
+  ],
   goal:{amount:5000,name:'IMS Panther Fund 2026-27'},
 };
 
@@ -1461,6 +1595,7 @@ function loadTestFin(){
     expenses:FIN_TEST.expenses.map(x=>({...x})),
     projects:FIN_TEST.projects.map(x=>({...x})),
     projectEntries:FIN_TEST.projectEntries.map(x=>({...x})),
+    requests:FIN_TEST.requests.map(x=>({...x})),
   };
   finGoal=FIN_TEST.goal.amount;
   finGoalName=FIN_TEST.goal.name;
@@ -1472,7 +1607,7 @@ function loadTestFin(){
 
 function clearTestFin(){
   testModeFin=false;
-  data={txns:[],hours:[],clubs:[],expenses:[],projects:[],projectEntries:[]};
+  data={txns:[],hours:[],clubs:[],expenses:[],projects:[],projectEntries:[],requests:[]};
   finGoal=0;finGoalName='Fundraising goal';
   document.getElementById('test-banner').style.display='none';
   if(db&&isConnected){
@@ -1484,6 +1619,7 @@ function clearTestFin(){
       data.expenses=d.expenses?Object.values(d.expenses):[];
       data.projects=d.projects?Object.values(d.projects):[];
       data.projectEntries=d.projectEntries?Object.values(d.projectEntries):[];
+      data.requests=d.requests?Object.values(d.requests):[];
       if(d.goal){finGoal=d.goal.amount||0;finGoalName=d.goal.name||'Fundraising goal';}
       renderAll();
     });
