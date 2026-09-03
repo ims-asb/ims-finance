@@ -809,40 +809,42 @@ async function checkGate(){
   try{
     await auth.signInWithEmailAndPassword(email,pw);
   }catch(authErr){
-    if(authErr.code==='auth/wrong-password'){
+    // Firebase merged auth/wrong-password and auth/user-not-found into a
+    // single generic auth/invalid-credential (a security change on its
+    // end, so failed sign-ins stop leaking whether an account exists) —
+    // so neither of the two specific codes below ever fires anymore.
+    // Branch on whether what they typed matches a known invite code
+    // instead, and let account creation's own success/failure confirm
+    // new vs. existing.
+    const role=getCode(pw);
+    if(!role){
       const fail=rlFailFin();
       if(fail.locked){errEl.textContent='Too many attempts — locked for 10 minutes';}
       else{errEl.textContent='Wrong password — '+fail.left+' attempt'+(fail.left===1?'':'s')+' left';inp.value='';}
       inp.disabled=false;
       return;
     }
-    if(authErr.code==='auth/user-not-found'){
-      // First time this specific person has signed in. What they typed
-      // has to match a real role's one-time invite code — if it does,
-      // this creates THEIR account, and whatever they just typed becomes
-      // their own personal password for every login after this. The
-      // shared invite code is never needed again for them specifically.
-      const role=getCode(pw);
-      if(!role){
+    // What they typed matches a role's invite code — could be a brand
+    // new person, OR could be someone whose real password just happens
+    // to not be their password (unlikely) while typing the invite code
+    // by mistake. Account creation tells us which for certain: if the
+    // email's already taken, this account already exists for real.
+    try{
+      await auth.createUserWithEmailAndPassword(email,pw);
+    }catch(createErr){
+      if(createErr.code==='auth/email-already-in-use'){
         const fail=rlFailFin();
         if(fail.locked){errEl.textContent='Too many attempts — locked for 10 minutes';}
-        else{errEl.textContent='Wrong invite code — '+fail.left+' attempt'+(fail.left===1?'':'s')+' left';inp.value='';}
+        else{errEl.textContent='Wrong password — '+fail.left+' attempt'+(fail.left===1?'':'s')+' left';inp.value='';}
         inp.disabled=false;
         return;
       }
-      try{
-        await auth.createUserWithEmailAndPassword(email,pw);
-      }catch(createErr){
-        errEl.textContent='Error: '+createErr.message;
-        inp.disabled=false;
-        return;
-      }
-      currentUser=role+' — '+name;
-      finishGateEntry(role,name,true);
+      errEl.textContent='Error: '+createErr.message;
+      inp.disabled=false;
       return;
     }
-    errEl.textContent='Sign-in error: '+authErr.message;
-    inp.disabled=false;
+    currentUser=role+' — '+name;
+    finishGateEntry(role,name,true);
     return;
   }
 
