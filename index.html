@@ -151,6 +151,22 @@ body.dark .test-banner{background:#2a2500;border-color:#6b5c00;color:#e0c040}
   </div>
 </div>
 
+
+<!-- NEW ACCOUNT (first time joining a role, invite code validated already) -->
+<div id="new-account-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('new-account-modal')">
+  <div class="modal" style="max-width:380px">
+    <h2 style="margin-bottom:6px">Set up your account</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">First time signing in as <strong id="na-role-label"></strong>. Choose your own password to use every time after this — not the invite code you just typed.</p>
+    <div class="fg"><label class="fl">Choose your password</label><input type="text" id="na-password" autocomplete="off" style="width:100%;-webkit-text-security:disc;text-security:disc"></div>
+    <div class="fg"><label class="fl">Confirm password</label><input type="text" id="na-password2" autocomplete="off" style="width:100%;-webkit-text-security:disc;text-security:disc" onkeydown="if(event.key==='Enter')confirmNewAccountFin()"></div>
+    <div id="na-error" style="font-size:12px;color:var(--red);min-height:16px;margin-bottom:8px;font-family:'DM Mono',monospace"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="closeModal('new-account-modal')">Cancel</button>
+      <button class="btn primary" onclick="confirmNewAccountFin()">Create account</button>
+    </div>
+  </div>
+</div>
+
 <!-- MAIN APP (hidden until auth) -->
 <div id="app" style="display:none;opacity:0;transition:opacity .35s ease">
 <div class="container">
@@ -503,7 +519,6 @@ const SCHOOL_CONFIG_FIN = {
   accessCodes: {
     'your-treasurer-code':  'Treasurer',
     'your-advisor-code':    'Advisor',
-    'your-bookkeeper-code': 'Bookkeeper',
   },
 
   // Monthly hours limits per teacher
@@ -768,13 +783,17 @@ function rlClearFin(){ localStorage.removeItem('ims-rl-gate'); }
 // access code is ever exposed to anyone else. To rotate a code, edit
 // SCHOOL_CONFIG_FIN.accessCodes and redeploy.
 function getCode(pw){
-  return CODES[pw] || null;
+  const norm=(pw||'').trim().toLowerCase();
+  for(const key in CODES){
+    if(key.toLowerCase()===norm)return CODES[key];
+  }
+  return null;
 }
 
 // ── AUTH ──────────────────────────────────────────────────────────────
 const CODES = Object.keys(SCHOOL_CONFIG_FIN.accessCodes)[0] !== 'your-treasurer-code'
   ? SCHOOL_CONFIG_FIN.accessCodes
-  : {'ember-quartz-4471':'Treasurer','maple-cobalt-8823':'Advisor','ridge-copper-1156':'Bookkeeper'};
+  : {'ember-quartz-4471':'Treasurer','maple-cobalt-8823':'Advisor'};
 let currentUser='';
 let finRole='';
 
@@ -824,27 +843,24 @@ async function checkGate(){
       inp.disabled=false;
       return;
     }
-    // What they typed matches a role's invite code — could be a brand
-    // new person, OR could be someone whose real password just happens
-    // to not be their password (unlikely) while typing the invite code
-    // by mistake. Account creation tells us which for certain: if the
-    // email's already taken, this account already exists for real.
-    try{
-      await auth.createUserWithEmailAndPassword(email,pw);
-    }catch(createErr){
-      if(createErr.code==='auth/email-already-in-use'){
-        const fail=rlFailFin();
-        if(fail.locked){errEl.textContent='Too many attempts — locked for 10 minutes';}
-        else{errEl.textContent='Wrong password — '+fail.left+' attempt'+(fail.left===1?'':'s')+' left';inp.value='';}
-        inp.disabled=false;
-        return;
-      }
-      errEl.textContent='Error: '+createErr.message;
+    const claimedBy=await roleAlreadyClaimedByFin(role);
+    if(claimedBy){
+      errEl.textContent=role+' is already registered to '+claimedBy+'.';
       inp.disabled=false;
       return;
     }
-    currentUser=role+' — '+name;
-    finishGateEntry(role,name,true);
+    // What they typed matches a role's invite code and normal sign-in
+    // already failed above, so this is a brand new person. Don't create
+    // the account yet with the invite code itself as the password — hand
+    // off to a dedicated step to choose a real one instead.
+    pendingNameFin=name;
+    pendingRoleFin=role;
+    document.getElementById('na-role-label').textContent=role;
+    document.getElementById('na-password').value='';
+    document.getElementById('na-password2').value='';
+    document.getElementById('na-error').textContent='';
+    inp.disabled=false;
+    openModal('new-account-modal');
     return;
   }
 
@@ -855,6 +871,40 @@ async function checkGate(){
   // silently loses their Treasurer-only controls.
   currentUser=name;
   finishGateEntry(null,name,false);
+}
+let pendingNameFin='',pendingRoleFin='';
+// Finance has no "open" roles like Hub's Member/Supporter — Treasurer and
+// Advisor are both meant to be exactly one specific person each. Without
+// this, a second different name could also register as "Treasurer" using
+// the same shared invite code, since accounts are keyed by name, not role.
+async function roleAlreadyClaimedByFin(role){
+  if(!db)return null;
+  const snap=await db.ref(SCHOOL_CONFIG_FIN.firebasePath+'/identity').once('value');
+  const records=snap.val()||{};
+  for(const uid in records){
+    if(records[uid]&&records[uid].role===role)return records[uid].name||uid;
+  }
+  return null;
+}
+async function confirmNewAccountFin(){
+  const name=pendingNameFin,role=pendingRoleFin;
+  const pw=document.getElementById('na-password').value;
+  const pw2=document.getElementById('na-password2').value;
+  const errEl=document.getElementById('na-error');
+  if(pw.length<8){errEl.textContent='Choose a password at least 8 characters long.';return;}
+  if(pw!==pw2){errEl.textContent="Passwords don't match.";return;}
+  const claimedBy=await roleAlreadyClaimedByFin(role);
+  if(claimedBy){errEl.textContent=role+' is already registered to '+claimedBy+'.';return;}
+  ensureFirebaseAppReady();
+  const email=authEmailFor(name);
+  try{
+    await auth.createUserWithEmailAndPassword(email,pw);
+  }catch(e){
+    errEl.textContent='Error: '+e.message;return;
+  }
+  closeModal('new-account-modal');
+  currentUser=role+' — '+name;
+  finishGateEntry(role,name,true);
 }
 
 function finishGateEntry(role,name,isNew){
