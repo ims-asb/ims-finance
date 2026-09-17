@@ -843,12 +843,6 @@ async function checkGate(){
       inp.disabled=false;
       return;
     }
-    const claimedBy=await roleAlreadyClaimedByFin(role);
-    if(claimedBy){
-      errEl.textContent=role+' is already registered to '+claimedBy+'.';
-      inp.disabled=false;
-      return;
-    }
     // What they typed matches a role's invite code and normal sign-in
     // already failed above, so this is a brand new person. Don't create
     // the account yet with the invite code itself as the password — hand
@@ -893,14 +887,21 @@ async function confirmNewAccountFin(){
   const errEl=document.getElementById('na-error');
   if(pw.length<8){errEl.textContent='Choose a password at least 8 characters long.';return;}
   if(pw!==pw2){errEl.textContent="Passwords don't match.";return;}
-  const claimedBy=await roleAlreadyClaimedByFin(role);
-  if(claimedBy){errEl.textContent=role+' is already registered to '+claimedBy+'.';return;}
   ensureFirebaseAppReady();
   const email=authEmailFor(name);
   try{
     await auth.createUserWithEmailAndPassword(email,pw);
   }catch(e){
     errEl.textContent='Error: '+e.message;return;
+  }
+  // Only now is there an actual session to read identity records with —
+  // this can't run before account creation, since reading requires auth
+  // and nobody's logged in yet before the account exists.
+  const claimedBy=await roleAlreadyClaimedByFin(role);
+  if(claimedBy){
+    errEl.textContent=role+' is already registered to '+claimedBy+'.';
+    await auth.currentUser.delete().catch(()=>{});
+    return;
   }
   closeModal('new-account-modal');
   currentUser=role+' — '+name;
